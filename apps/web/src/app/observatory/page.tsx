@@ -6,10 +6,12 @@ import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
 import { useTime } from "@/context/time-context";
 import { useSelection } from "@/context/selection-context";
+import { useMobileLane } from "@/context/mobile-lane-context";
 
 export default function ObservatoryPage() {
   const { selectedEvent, selectEvent } = useSelection();
   const { targetTimestamp, isInPast, setCatchUpCount } = useTime();
+  const { activeLane } = useMobileLane();
 
   // Query all events (without time filter) for catch-up count calculation
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
@@ -67,51 +69,106 @@ export default function ObservatoryPage() {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-      <Lane
-        title="Hacker News"
-        icon={<span className="text-orange-500">🔶</span>}
-        count={hnEvents.length}
-        isLoading={isLoading}
-      >
-        {hnEvents.length > 0 ? (
-          hnEvents.map(renderEventCard)
-        ) : (
-          <p className="text-muted-foreground text-sm p-2">
-            Nema HN vijesti
-          </p>
-        )}
-      </Lane>
+    <div className="h-full">
+      {/* Desktop: 3 columns */}
+      <div className="hidden md:grid md:grid-cols-3 gap-4 h-full">
+        <Lane
+          title="Hacker News"
+          icon={<span className="text-orange-500">🔶</span>}
+          count={hnEvents.length}
+          isLoading={isLoading}
+        >
+          {hnEvents.length > 0 ? (
+            hnEvents.map(renderEventCard)
+          ) : (
+            <p className="text-muted-foreground text-sm p-2">
+              Nema HN vijesti
+            </p>
+          )}
+        </Lane>
 
-      <Lane
-        title="GitHub"
-        icon={<span>🐙</span>}
-        count={ghEvents.length}
-        isLoading={isLoading}
-      >
-        {ghEvents.length > 0 ? (
-          ghEvents.map(renderEventCard)
-        ) : (
-          <p className="text-muted-foreground text-sm p-2">
-            Nema GitHub projekata
-          </p>
-        )}
-      </Lane>
+        <Lane
+          title="GitHub"
+          icon={<span>🐙</span>}
+          count={ghEvents.length}
+          isLoading={isLoading}
+        >
+          {ghEvents.length > 0 ? (
+            ghEvents.map(renderEventCard)
+          ) : (
+            <p className="text-muted-foreground text-sm p-2">
+              Nema GitHub projekata
+            </p>
+          )}
+        </Lane>
 
-      <Lane
-        title="Radovi"
-        icon={<span>📄</span>}
-        count={arxivEvents.length}
-        isLoading={isLoading}
-      >
-        {arxivEvents.length > 0 ? (
-          arxivEvents.map(renderEventCard)
-        ) : (
-          <p className="text-muted-foreground text-sm p-2">
-            Nema radova
-          </p>
+        <Lane
+          title="Radovi"
+          icon={<span>📄</span>}
+          count={arxivEvents.length}
+          isLoading={isLoading}
+        >
+          {arxivEvents.length > 0 ? (
+            arxivEvents.map(renderEventCard)
+          ) : (
+            <p className="text-muted-foreground text-sm p-2">
+              Nema radova
+            </p>
+          )}
+        </Lane>
+      </div>
+
+      {/* Mobile: Single lane based on active tab */}
+      <div className="md:hidden h-full pb-20">
+        {activeLane === "hn" && (
+          <Lane
+            title="Hacker News"
+            icon={<span className="text-orange-500">🔶</span>}
+            count={hnEvents.length}
+            isLoading={isLoading}
+          >
+            {hnEvents.length > 0 ? (
+              hnEvents.map(renderEventCard)
+            ) : (
+              <p className="text-muted-foreground text-sm p-2">
+                Nema HN vijesti
+              </p>
+            )}
+          </Lane>
         )}
-      </Lane>
+        {activeLane === "github" && (
+          <Lane
+            title="GitHub"
+            icon={<span>🐙</span>}
+            count={ghEvents.length}
+            isLoading={isLoading}
+          >
+            {ghEvents.length > 0 ? (
+              ghEvents.map(renderEventCard)
+            ) : (
+              <p className="text-muted-foreground text-sm p-2">
+                Nema GitHub projekata
+              </p>
+            )}
+          </Lane>
+        )}
+        {activeLane === "arxiv" && (
+          <Lane
+            title="Radovi"
+            icon={<span>📄</span>}
+            count={arxivEvents.length}
+            isLoading={isLoading}
+          >
+            {arxivEvents.length > 0 ? (
+              arxivEvents.map(renderEventCard)
+            ) : (
+              <p className="text-muted-foreground text-sm p-2">
+                Nema radova
+              </p>
+            )}
+          </Lane>
+        )}
+      </div>
     </div>
   );
 }

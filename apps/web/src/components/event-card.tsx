@@ -37,19 +37,30 @@ export function EventCard({
   isSelected = false,
   onClick,
 }: EventCardProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick?.();
+    }
+  };
+
   return (
     <article
       className={cn(
-        "border-l-4 rounded-r-lg p-4 cursor-pointer",
+        "border-l-4 rounded-r-lg p-4 cursor-pointer min-h-[44px]",
         "transition-all duration-300 ease-in-out",
         "animate-in fade-in-0 slide-in-from-bottom-2",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         impactColors[impactLevel],
         isSelected && "ring-2 ring-primary",
         "hover:bg-accent/50"
       )}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-pressed={isSelected}
+      aria-label={`${titleHr || title}, ${impactLevel} impact, ${occurredAt.toLocaleDateString("hr-HR")}, ${sourceCount} izvora`}
     >
       {/* Title */}
       <h3 className="font-medium mb-1">{titleHr || title}</h3>

@@ -84,8 +84,8 @@ export function TimeMachine({
             </span>
           ) : (
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              UZIVO
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" aria-hidden="true" />
+              <span aria-live="polite">UZIVO</span>
             </span>
           )}
         </div>
@@ -94,7 +94,8 @@ export function TimeMachine({
         {isInPast && (
           <button
             onClick={handleJumpToNow}
-            className="text-xs text-primary hover:underline"
+            className="text-xs text-primary hover:underline min-h-[44px] px-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+            aria-label="Preskoci na trenutno vrijeme"
           >
             Skoci na sada
           </button>
@@ -127,7 +128,10 @@ export function TimeMachine({
       {/* Catch up button (shown when in the past) */}
       {isInPast && catchUpCount > 0 && (
         <div className="pt-2">
-          <button className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded-md">
+          <button
+            className="text-sm bg-primary text-primary-foreground px-3 py-2 rounded-md min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            aria-label={`Pusti ${catchUpCount} dogadaja dvostrukom brzinom`}
+          >
             Pusti {catchUpCount} dogadaja (2x brzina)
           </button>
         </div>

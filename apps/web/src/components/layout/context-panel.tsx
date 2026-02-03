@@ -66,7 +66,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
             className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
           >
             <span>Pogledaj izvor</span>
-            <span>↗</span>
+            <span aria-hidden="true">&#8599;</span>
           </a>
         </div>
       )}
@@ -91,10 +91,10 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
           {selectedEvent && (
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="Zatvori"
+              className="text-muted-foreground hover:text-foreground min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+              aria-label="Zatvori panel s detaljima"
             >
-              ✕
+              <span aria-hidden="true">&#10005;</span>
             </button>
           )}
         </div>
@@ -111,16 +111,21 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
             aria-hidden="true"
           />
           {/* Sheet */}
-          <aside className="fixed bottom-0 left-0 right-0 bg-card rounded-t-xl z-50 max-h-[70vh] overflow-y-auto xl:hidden animate-in slide-in-from-bottom duration-200">
+          <aside
+            className="fixed bottom-0 left-0 right-0 bg-card rounded-t-xl z-50 max-h-[70vh] overflow-y-auto xl:hidden animate-in slide-in-from-bottom duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Detalji dogadaja"
+          >
             {/* Close button */}
             <div className="sticky top-0 flex items-center justify-between p-4 border-b bg-card">
-              <span className="font-medium">Detalji</span>
+              <span className="font-medium" id="sheet-title">Detalji</span>
               <button
                 onClick={clearSelection}
-                className="p-2 rounded-full hover:bg-muted"
-                aria-label="Zatvori"
+                className="p-2 rounded-full hover:bg-muted min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label="Zatvori panel s detaljima"
               >
-                ✕
+                <span aria-hidden="true">&#10005;</span>
               </button>
             </div>
             {panelContent}

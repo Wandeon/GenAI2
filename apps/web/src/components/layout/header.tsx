@@ -120,18 +120,22 @@ export function Header({
   const SearchDropdown = () => (
     <>
       {isDropdownOpen && debouncedQuery.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-card border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
+        <div
+          className="absolute top-full left-0 right-0 mt-1 bg-card border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto"
+          role="listbox"
+          aria-label="Rezultati pretrage"
+        >
           {isSearching ? (
             <div className="p-4 text-center text-muted-foreground">
               <span className="animate-pulse">Pretrazujem...</span>
             </div>
           ) : results.length > 0 ? (
-            <ul className="py-1">
+            <ul className="py-1" role="presentation">
               {results.map((result) => (
-                <li key={result.id}>
+                <li key={result.id} role="option">
                   <button
                     onClick={() => handleResultClick(result.id)}
-                    className="w-full px-4 py-3 text-left hover:bg-accent/50 transition-colors flex items-start gap-3"
+                    className="w-full px-4 py-3 text-left hover:bg-accent/50 transition-colors flex items-start gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset min-h-[44px]"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -177,7 +181,8 @@ export function Header({
             {isInPast && (
               <button
                 onClick={jumpToNow}
-                className="text-xs text-amber-500 px-2 py-1 bg-amber-500/10 rounded"
+                className="text-xs text-amber-500 px-2 py-1 bg-amber-500/10 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label={`Preskoci na sada, trenutno prikazujem ${targetTimestamp.toLocaleDateString("hr-HR", { day: "numeric", month: "short" })}`}
               >
                 {targetTimestamp.toLocaleDateString("hr-HR", {
                   day: "numeric",
@@ -187,10 +192,11 @@ export function Header({
             )}
             <button
               onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              className="p-2"
-              aria-label="Pretrazi"
+              className="p-2 min-w-[44px] min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+              aria-label={mobileSearchOpen ? "Zatvori pretragu" : "Otvori pretragu"}
+              aria-expanded={mobileSearchOpen}
             >
-              <SearchIcon />
+              <SearchIcon aria-hidden="true" />
             </button>
           </div>
         </div>

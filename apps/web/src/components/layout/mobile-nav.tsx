@@ -21,13 +21,15 @@ export function MobileNav() {
             onClick={() => setActiveLane(tab.id)}
             className={cn(
               "flex-1 flex flex-col items-center py-3 text-xs min-h-[56px]",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
               activeLane === tab.id
                 ? "text-primary"
                 : "text-muted-foreground"
             )}
-            aria-label={`Switch to ${tab.label}`}
+            aria-label={`Prebaci na ${tab.label}`}
+            aria-pressed={activeLane === tab.id}
           >
-            <span className="text-lg">{tab.icon}</span>
+            <span className="text-lg" aria-hidden="true">{tab.icon}</span>
             <span>{tab.label}</span>
           </button>
         ))}

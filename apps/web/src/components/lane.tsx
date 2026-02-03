@@ -37,7 +37,7 @@ export function Lane({
       {/* Lane header */}
       <header className="flex items-center justify-between px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-2">
-          {icon}
+          {icon && <span aria-hidden="true">{icon}</span>}
           <h2 className="font-semibold">{title}</h2>
           {typeof count === "number" && (
             <span className="text-sm text-muted-foreground">({count})</span>

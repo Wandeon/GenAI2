@@ -43,22 +43,55 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 **Goal:** Ship something magical that feels like the future
 
+### Sprint 0.1 – Shell + Data Wiring ✅ DONE
+
 * [x] Next.js scaffold + Tailwind v4 + shadcn
-* [x] tRPC setup + type-safe client
+* [x] tRPC client + provider
+* [x] tRPC API route handler
 * [x] Layout shell (sidebar, header, context panel)
 * [x] Lane component + EventCard
-* [x] tRPC API route handler
-* [x] Mock events with time filtering
+* [x] Observatory layout wrapper
+* [x] Mock events with tRPC query
 * [x] Keyboard navigation hook (j/k/[/])
+
+**Gate:** Build passes, lanes render mock data via tRPC ✅
+
+### Sprint 0.2 – Discovery + Real Feeds (NEXT)
+
 * [ ] Search bar with instant results
-* [ ] Connect to existing APIs (HN, GitHub, Papers)
-* [ ] Time Machine wired to tRPC filter
-* [ ] Context panel showing selected event
-* [ ] Mobile layout (tabs, swipe)
+* [ ] HN feed integration
+* [ ] GitHub feed integration
+* [ ] Papers feed integration
 
 **Gate:**
+* Searching "openai" shows results
+* HN/GitHub/Papers events appear in lanes
+* Clicking event logs ID to console
 
-* Observatory renders real data
+### Sprint 0.3 – Time Machine
+
+* [ ] Scrubber UI functional
+* [ ] Time filter wired to tRPC query
+* [ ] Catch-up count calculation
+* [ ] Animation on time change
+
+**Gate:** Dragging scrubber filters visible events
+
+### Sprint 0.4 – Context + Mobile
+
+* [ ] Context panel shows selected event details
+* [ ] Mobile tab navigation
+* [ ] Mobile swipe between lanes
+* [ ] Tested on 375px width
+
+**Gate:**
+* Lighthouse Performance ≥ 85
+* Lighthouse Accessibility ≥ 90
+* Mobile verified on 375px
+
+### Phase 0 Exit Gate
+
+* Observatory renders real data from feeds
 * Time Machine interactive
 * Tested on desktop + 375px mobile
 * Stakeholder demo produces "holy crap" reaction

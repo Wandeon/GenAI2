@@ -3,36 +3,32 @@
 import { useState, useMemo } from "react";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
-import {
-  mockEvents,
-  filterEventsByTime,
-  filterEventsByCategory,
-  type MockEvent,
-} from "@/lib/mock-events";
+import { trpc } from "@/trpc";
 
 export default function ObservatoryPage() {
-  const [scrubberValue] = useState(100);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  const visibleEvents = useMemo(
-    () => filterEventsByTime(mockEvents, scrubberValue),
-    [scrubberValue]
-  );
+  const { data: eventsData, isLoading } = trpc.events.list.useQuery({
+    limit: 50,
+    status: "PUBLISHED",
+  });
+
+  const events = eventsData?.items ?? [];
 
   const breakingEvents = useMemo(
-    () => filterEventsByCategory(visibleEvents, "breaking"),
-    [visibleEvents]
+    () => events.filter((e) => e.impactLevel === "BREAKING"),
+    [events]
   );
-  const researchEvents = useMemo(
-    () => filterEventsByCategory(visibleEvents, "research"),
-    [visibleEvents]
+  const highEvents = useMemo(
+    () => events.filter((e) => e.impactLevel === "HIGH"),
+    [events]
   );
-  const industryEvents = useMemo(
-    () => filterEventsByCategory(visibleEvents, "industry"),
-    [visibleEvents]
+  const otherEvents = useMemo(
+    () => events.filter((e) => e.impactLevel === "MEDIUM" || e.impactLevel === "LOW"),
+    [events]
   );
 
-  const renderEventCard = (event: MockEvent) => (
+  const renderEventCard = (event: (typeof events)[0]) => (
     <EventCard
       key={event.id}
       id={event.id}
@@ -53,40 +49,43 @@ export default function ObservatoryPage() {
         title="Breaking"
         icon={<span className="text-red-500">🔴</span>}
         count={breakingEvents.length}
+        isLoading={isLoading}
       >
         {breakingEvents.length > 0 ? (
           breakingEvents.map(renderEventCard)
         ) : (
           <p className="text-muted-foreground text-sm p-2">
-            Nema breaking vijesti u ovom vremenskom razdoblju
+            Nema breaking vijesti
           </p>
         )}
       </Lane>
 
       <Lane
-        title="Istraživanje"
-        icon={<span>🔬</span>}
-        count={researchEvents.length}
+        title="Važno"
+        icon={<span className="text-orange-500">🟠</span>}
+        count={highEvents.length}
+        isLoading={isLoading}
       >
-        {researchEvents.length > 0 ? (
-          researchEvents.map(renderEventCard)
+        {highEvents.length > 0 ? (
+          highEvents.map(renderEventCard)
         ) : (
           <p className="text-muted-foreground text-sm p-2">
-            Nema istraživačkih vijesti u ovom vremenskom razdoblju
+            Nema važnih vijesti
           </p>
         )}
       </Lane>
 
       <Lane
-        title="Industrija"
-        icon={<span>🏢</span>}
-        count={industryEvents.length}
+        title="Ostalo"
+        icon={<span>📰</span>}
+        count={otherEvents.length}
+        isLoading={isLoading}
       >
-        {industryEvents.length > 0 ? (
-          industryEvents.map(renderEventCard)
+        {otherEvents.length > 0 ? (
+          otherEvents.map(renderEventCard)
         ) : (
           <p className="text-muted-foreground text-sm p-2">
-            Nema industrijskih vijesti u ovom vremenskom razdoblju
+            Nema ostalih vijesti
           </p>
         )}
       </Lane>

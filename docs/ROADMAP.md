@@ -1,138 +1,176 @@
 # Roadmap
 
-GenAI Observatory implementation roadmap following the "Wow Slice First" approach.
+GenAI Observatory implementation roadmap following the **Wow Slice First** approach.
+
+---
 
 ## Philosophy
 
-Ship the cockpit first. The "holy crap" moment happens in Week 2, not Week 10.
+Ship the cockpit first.
+The "holy crap" moment happens in Week 2, not Week 10.
+
+---
+
+## Roadmap Rules
+
+* A phase is NOT complete until its Gate passes.
+* Failed gates block starting the next phase.
+* Scope may only be added by creating a new phase.
+* If a phase slips > 3 days, pause and re-evaluate scope.
+* "In Progress" means code exists in `main`.
+
+---
 
 ## Phases Overview
 
-| Phase | Focus | Duration | Status |
-|-------|-------|----------|--------|
-| 0 | Observatory Wow Slice | 2 weeks | **In Progress** |
-| 1 | Data Foundation | 2 weeks | Planned |
-| 2 | Event Pipeline | 2 weeks | Planned |
-| 3 | Observatory Production | 2 weeks | Planned |
-| 4 | Daily Run | 1.5 weeks | Planned |
-| 5 | Explore | 2 weeks | Planned |
-| 6 | Personalization | 1.5 weeks | Planned |
-| 7 | Library + Migration | 2 weeks | Planned |
-| 8 | Polish + Launch | 1.5 weeks | Planned |
+| Phase | Focus                  | Duration  | Status          |
+| ----- | ---------------------- | --------- | --------------- |
+| 0     | Observatory Wow Slice  | 2 weeks   | **In Progress** |
+| 1     | Data Foundation        | 2 weeks   | Planned         |
+| 2     | Event Pipeline         | 2 weeks   | Planned         |
+| 3     | Observatory Production | 2 weeks   | Planned         |
+| 4     | Daily Run              | 1.5 weeks | Planned         |
+| 5     | Explore                | 2 weeks   | Planned         |
+| 6     | Personalization        | 1.5 weeks | Planned         |
+| 7     | Library + Migration    | 2 weeks   | Planned         |
+| 8     | Polish + Launch        | 1.5 weeks | Planned         |
 
 ---
 
 ## Phase 0: Observatory Wow Slice
 
+**Owner:** Web
+
 **Goal:** Ship something magical that feels like the future
 
-- [x] Next.js scaffold + Tailwind v4 + shadcn
-- [x] tRPC setup + type-safe client
-- [x] Layout shell (sidebar, header, context panel)
-- [x] Lane component + EventCard
-- [ ] Search bar with instant results
-- [ ] Connect to existing APIs (HN, GitHub, Papers)
-- [ ] Time Machine scrubber (flagship UX)
-- [ ] Context panel + keyboard nav (j/k/[/])
-- [ ] Mobile layout (tabs, swipe)
+* [x] Next.js scaffold + Tailwind v4 + shadcn
+* [x] tRPC setup + type-safe client
+* [x] Layout shell (sidebar, header, context panel)
+* [x] Lane component + EventCard
+* [ ] Search bar with instant results
+* [ ] Connect to existing APIs (HN, GitHub, Papers)
+* [ ] Time Machine scrubber (flagship UX)
+* [ ] Context panel + keyboard nav (j/k/[/])
+* [ ] Mobile layout (tabs, swipe)
 
-**Gate:** Demo to stakeholder, get "holy crap" reaction
+**Gate:**
+
+* Observatory renders real data
+* Time Machine interactive
+* Tested on desktop + 375px mobile
+* Stakeholder demo produces "holy crap" reaction
 
 ---
 
 ## Phase 1: Data Foundation
 
+**Owner:** API / Worker
+
 **Goal:** Build the evidence + artifact system properly
 
-- [ ] EvidenceSource + EvidenceSnapshot models
-- [ ] Event model with fingerprint dedup
-- [ ] EventStatusChange audit log
-- [ ] EventArtifact with typed payloads
-- [ ] LLMRun observability model
-- [ ] Topic model + EventTopic join + seed
-- [ ] Entity model + EntityAlias + EntityMention
-- [ ] Relationship model + Safety Gate
-- [ ] FTS columns + GIN indexes (raw SQL migration)
-- [ ] AnonSession + Watchlist models
-- [ ] Backfill script (existing data → Event)
+* [ ] EvidenceSource + EvidenceSnapshot models
+* [ ] Event model with fingerprint dedup
+* [ ] EventStatusChange audit log
+* [ ] EventArtifact with typed payloads
+* [ ] LLMRun observability model
+* [ ] Topic model + EventTopic join + seed
+* [ ] Entity model + EntityAlias + EntityMention
+* [ ] Relationship model + Safety Gate
+* [ ] FTS columns + GIN indexes
+* [ ] AnonSession + Watchlist models
+* [ ] Backfill script
 
-**Gate:** All tests pass, migrations deployed to staging
+**Gate:**
+
+* All migrations applied on staging
+* All tests passing
+* Backfill produces valid Events
 
 ---
 
 ## Phase 2: Event Pipeline
 
+**Owner:** Worker
+
 **Goal:** Events flow automatically with GM processing
 
-- [ ] evidence-snapshot processor
-- [ ] event-create processor with fingerprint
-- [ ] event-enrich processor (GM artifacts)
-- [ ] entity-extract processor
-- [ ] relationship-extract + safety gate
-- [ ] topic-assign processor
-- [ ] watchlist-match processor
-- [ ] Queue orchestration
+* [ ] evidence-snapshot processor
+* [ ] event-create processor
+* [ ] event-enrich processor
+* [ ] entity-extract processor
+* [ ] relationship-extract + safety gate
+* [ ] topic-assign processor
+* [ ] watchlist-match processor
+* [ ] Queue orchestration
 
-**Gate:** New HN post → Event with artifacts (< 2 minutes)
+**Gate:**
+
+* New HN post → Event with artifacts in < 2 minutes
 
 ---
 
 ## Phase 3: Observatory Production
 
-**Goal:** Observatory is production-ready with tRPC
+**Owner:** Web / API
 
-- [ ] tRPC router for events
-- [ ] Replace mock data with tRPC
-- [ ] SSE signal + REST fetch (CDN-safe)
-- [ ] Time Machine with real data
-- [ ] Lane configuration (persist server-side)
-- [ ] GM Transparency panel
-- [ ] Quarantine lane (admin view)
-- [ ] Performance (virtualization)
+* [ ] tRPC router for events
+* [ ] Replace mock data
+* [ ] SSE signal + REST fetch
+* [ ] Time Machine real data
+* [ ] Lane config persisted
+* [ ] GM Transparency panel
+* [ ] Quarantine lane
+* [ ] Virtualization
 
-**Gate:** Lighthouse > 85, mobile works
+**Gate:**
+
+* Lighthouse Performance ≥ 85
+* Lighthouse Accessibility ≥ 90
+* Mobile verified
 
 ---
 
 ## Phase 4: Daily Run
 
-**Goal:** Ritual daily briefing that creates habit
+**Owner:** Worker / Web
 
-- [ ] DailyBriefing model + processor
-- [ ] Daily Run page
-- [ ] "GM • 12 izvora" disclosure
-- [ ] "Catch up" integration via Time Machine
-- [ ] Session lastEventCursor tracking
+* [ ] DailyBriefing model + processor
+* [ ] Daily Run page
+* [ ] Source disclosure
+* [ ] Catch-up integration
+* [ ] Cursor tracking
 
-**Gate:** Return after 3 days → accurate catch-up
+**Gate:**
+
+* Returning after 3 days shows correct catch-up
 
 ---
 
 ## Phase 5: Explore
 
-**Goal:** Entity dossier first, graph optional
+**Owner:** Web / API
 
-- [ ] Entity search (fuzzy + aliases)
-- [ ] Entity dossier page
-- [ ] "Recent events" for entity
-- [ ] "Related entities" list
-- [ ] Graph view (optional tab)
-- [ ] Graph filters
-- [ ] Mobile dossier
+* [ ] Entity search
+* [ ] Dossier page
+* [ ] Recent events
+* [ ] Related entities
+* [ ] Graph tab
+* [ ] Filters
+* [ ] Mobile dossier
 
-**Gate:** Search → dossier → events flow
+**Gate:** Search → dossier → events works
 
 ---
 
 ## Phase 6: Personalization
 
-**Goal:** Watchlists that drive return visits
+**Owner:** API / Web
 
-- [ ] Session middleware (HttpOnly cookie)
-- [ ] Watchlist tRPC CRUD
-- [ ] Watchlist page
-- [ ] "Missed events" badge
-- [ ] Watchlist → Time Machine integration
+* [ ] Session middleware
+* [ ] Watchlist CRUD
+* [ ] Watchlist page
+* [ ] Missed badge
+* [ ] TM integration
 
 **Gate:** Create watchlist → match → notification
 
@@ -140,33 +178,42 @@ Ship the cockpit first. The "holy crap" moment happens in Week 2, not Week 10.
 
 ## Phase 7: Library + Migration
 
-**Goal:** WordPress content migrated with SEO preserved
+**Owner:** Web / Infra
 
-- [ ] Article model
-- [ ] Library page + detail
-- [ ] WP crawl script
-- [ ] Redirect map + automated tests
-- [ ] Content migration
-- [ ] SEO: sitemap, canonicals, JSON-LD
-- [ ] RSS feed preservation
+* [ ] Article model
+* [ ] Library UI
+* [ ] WP crawl
+* [ ] Redirect tests
+* [ ] Migration
+* [ ] SEO metadata
+* [ ] RSS preserved
 
-**Gate:** All 301s work, RSS preserved
+**Gate:** All 301s pass, RSS works
 
 ---
 
 ## Phase 8: Polish + Launch
 
-**Goal:** Production-ready, DNS cutover
+**Owner:** Infra
 
-- [ ] Performance audit (Lighthouse 90+)
-- [ ] Accessibility (WCAG 2.1 AA)
-- [ ] Security (CSP, rate limiting)
-- [ ] LLM cost dashboard
-- [ ] Staging regression
-- [ ] DNS cutover
-- [ ] 7-day monitoring
+* [ ] Performance audit
+* [ ] Accessibility audit
+* [ ] Security headers
+* [ ] LLM cost dashboard
+* [ ] Staging regression
+* [ ] DNS cutover
+* [ ] 7-day monitoring
 
 **Gate:** 7 days stable, SEO traffic maintained
+
+---
+
+## Kill Criteria
+
+If Phase 0 fails to produce a compelling Observatory within 2 weeks:
+
+* Stop all expansion
+* Focus only on Observatory UX until success
 
 ---
 

@@ -3,8 +3,10 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-8">
-      <h1 className="text-4xl font-bold mb-4">GenAI Observatory</h1>
-      <p className="text-muted-foreground mb-8">World State AI Observatory</p>
+      <h1 className="text-4xl font-bold mb-4">GenAI2 Observatory</h1>
+      <p className="text-muted-foreground mb-8">
+        World State AI Observatory scaffold
+      </p>
 
       <nav className="flex flex-col gap-4 text-center">
         <Link

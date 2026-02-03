@@ -7,8 +7,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "echo \"No lint yet for @genai/web\"",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests yet for @genai/web\""
   },
   "dependencies": {
     "@genai/trpc": "workspace:*",

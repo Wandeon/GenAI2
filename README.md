@@ -1,10 +1,6 @@
-# GenAI Observatory
+# GenAI2
 
-World State AI Observatory - Real-time intelligence on AI developments.
-
-## Architecture
-
-See the plan document for full Architecture Constitution and data model.
+GenAI2 is the monorepo scaffold for the World State AI Observatory: a multi-surface system that ingests evidence, turns it into events, and ships curated artifacts for operators and readers. This repo focuses on getting the spine, tooling, and documentation correct so product development can start immediately.
 
 ## Project Structure
 
@@ -25,15 +21,37 @@ GenAI2/
 └── pnpm-workspace.yaml
 ```
 
-## Primary Surfaces
+## Requirements
 
-| Surface | Route | Purpose |
-|---------|-------|---------|
-| Observatory | `/observatory` | Multi-lane glass cockpit with real-time events |
-| Daily Run | `/daily` | Ritual briefing with GM commentary |
-| Explore | `/explore/[slug]` | Entity dossier + relationship graph |
-| Watchlists | `/watchlists` | User subscriptions with catch-up |
-| Library | `/library` | Migrated articles + deep dives |
+- Node.js 20+ (see `.nvmrc` if added later)
+- pnpm 9+ (`corepack enable`)
+
+## Quickstart
+
+```bash
+# Install dependencies
+pnpm install
+
+# Copy root environment template
+cp .env.example .env
+
+# Copy per-app environment templates (edit as needed)
+cp apps/web/.env.example apps/web/.env.local
+cp apps/api/.env.example apps/api/.env
+cp apps/worker/.env.example apps/worker/.env
+cp apps/admin/.env.example apps/admin/.env
+
+# Generate Prisma client
+pnpm db:generate
+
+# Run database migrations (dev only)
+pnpm db:migrate
+
+# Start development servers
+pnpm dev
+```
+
+The first dev run should take under 5 minutes on a modern laptop.
 
 ## Getting Started
 
@@ -68,6 +86,26 @@ pnpm typecheck
 
 # Lint
 pnpm lint
+
+# Run tests (placeholder for now)
+pnpm test
+```
+
+## Environment setup
+
+- Root: `.env` (shared services like database/redis)
+- Per-app: `.env` or `.env.local` files inside each app (see `apps/*/.env.example`)
+- Never commit real secrets; use `.env.example` for placeholders.
+
+## Common commands
+
+```bash
+pnpm install
+pnpm dev
+pnpm build
+pnpm typecheck
+pnpm lint
+pnpm test
 ```
 
 ## Ports
@@ -80,9 +118,16 @@ pnpm lint
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 (App Router)
+- **Framework**: Next.js (App Router; target is 16)
 - **API**: tRPC + Fastify
 - **Database**: PostgreSQL + Prisma
 - **Queue**: BullMQ + Redis
 - **Styling**: Tailwind CSS v4 + shadcn/ui
 - **State**: TanStack Query + tRPC
+
+## Docs
+
+- `docs/ARCHITECTURE.md` — architecture constitution & data flow
+- `docs/CONTRIBUTING.md` — how to work in the monorepo
+- `docs/DECISIONS.md` — key technical choices
+- `docs/ENVIRONMENT.md` — environment variables & secrets strategy

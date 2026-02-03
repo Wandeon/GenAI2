@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-inter",
-});
-
 export const metadata: Metadata = {
-  title: "GenAI Observatory",
-  description: "World State AI Observatory - Real-time intelligence on AI developments",
+  title: "GenAI2 Observatory",
+  description: "World State AI Observatory - GenAI2 monorepo scaffold",
 };
 
 export default function RootLayout({
@@ -18,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="hr" className={inter.variable}>
+    <html lang="en">
       <body className="min-h-screen bg-background font-sans antialiased">
         {/* TODO: Add tRPC provider, session provider */}
         {children}

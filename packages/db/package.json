@@ -14,14 +14,21 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
+    "seed": "tsx prisma/seed.ts",
+    "backfill": "tsx src/backfill.ts",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No tests yet for @genai/db\""
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "prisma": "^6.2.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.0"
   }
 }

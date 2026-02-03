@@ -32,3 +32,51 @@
 ## Root environment
 
 The root `.env` is optional and can be used for shared services (database, redis) during local dev. Copy from `.env.example` if needed.
+
+## Secrets Management - Infisical
+
+Production secrets are managed via **Infisical** running in Docker Desktop.
+
+### Setup
+
+```bash
+# Start Infisical locally
+docker compose -f infisical/docker-compose.yml up -d
+
+# Login
+infisical login
+
+# Pull secrets for development
+infisical export --env=dev > .env
+
+# Pull secrets for production
+infisical export --env=prod > .env.production
+```
+
+### Secret Categories
+
+| Category | Variables |
+|----------|-----------|
+| Database | `DATABASE_URL`, `REDIS_URL` |
+| LLM | `GOOGLE_AI_API_KEY`, `DEEPSEEK_API_KEY` |
+| Ollama | `OLLAMA_LOCAL_URL`, `OLLAMA_CLOUD_URL`, `OLLAMA_CLOUD_API_KEY` |
+| Auth | `COOKIE_SECRET`, `JWT_SECRET` |
+
+## Infrastructure Hosts
+
+| Host | Role | Services |
+|------|------|----------|
+| **VPS-00** | App Server | Next.js, API, Worker, Admin |
+| **GPU-01** | Gateway | API Gateway, Ollama Local, GPU tasks |
+| **Docker Desktop** | Local Dev | Infisical, Redis, PostgreSQL |
+
+## CI/CD Secrets (GitHub)
+
+These secrets must be configured in GitHub repository settings:
+
+| Secret | Purpose |
+|--------|---------|
+| `VPS_HOST` | VPS-00 hostname/IP |
+| `VPS_USER` | SSH username |
+| `VPS_SSH_KEY` | SSH private key for deployment |
+| `HEALTH_CHECK_URL` | Production URL for health checks |

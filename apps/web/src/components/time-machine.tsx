@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { cn } from "@genai/ui";
 
 // ============================================================================
 // TIME MACHINE SCRUBBER - Flagship UX mechanic
@@ -47,6 +48,14 @@ export function TimeMachine({
     [onChange]
   );
 
+  const handleJumpToNow = useCallback(() => {
+    if (onChange) {
+      onChange(100);
+    } else {
+      setLocalValue(100);
+    }
+  }, [onChange]);
+
   // Calculate the date at current scrubber position
   const now = Date.now();
   const targetTime = now - rangeMs * (1 - currentValue / 100);
@@ -56,6 +65,42 @@ export function TimeMachine({
 
   return (
     <div className="space-y-2">
+      {/* Time state indicator */}
+      <div className="flex items-center justify-between">
+        <div
+          className={cn(
+            "text-sm font-mono",
+            isInPast ? "text-amber-500" : "text-green-500"
+          )}
+        >
+          {isInPast ? (
+            <span>
+              {targetDate.toLocaleDateString("hr-HR", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              UZIVO
+            </span>
+          )}
+        </div>
+
+        {/* Jump to now button */}
+        {isInPast && (
+          <button
+            onClick={handleJumpToNow}
+            className="text-xs text-primary hover:underline"
+          >
+            Skoci na sada
+          </button>
+        )}
+      </div>
+
       {/* Scrubber */}
       <input
         type="range"
@@ -63,14 +108,17 @@ export function TimeMachine({
         max={100}
         value={currentValue}
         onChange={handleChange}
-        className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
+        className={cn(
+          "w-full h-2 rounded-lg appearance-none cursor-pointer",
+          isInPast ? "bg-amber-200 dark:bg-amber-900" : "bg-secondary"
+        )}
         aria-label="Time machine scrubber"
       />
 
       {/* Labels */}
       <div className="flex justify-between text-sm text-muted-foreground">
         <span>7 dana prije</span>
-        <span className={isInPast ? "font-medium text-foreground" : ""}>
+        <span className={isInPast ? "font-medium text-amber-500" : ""}>
           {isInPast ? targetDate.toLocaleDateString("hr-HR") : "SADA"}
         </span>
         <span>SADA</span>
@@ -80,7 +128,7 @@ export function TimeMachine({
       {isInPast && catchUpCount > 0 && (
         <div className="pt-2">
           <button className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded-md">
-            Pusti {catchUpCount} događaja (2x brzina)
+            Pusti {catchUpCount} dogadaja (2x brzina)
           </button>
         </div>
       )}

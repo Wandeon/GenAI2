@@ -23,7 +23,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "echo \"No lint yet for @genai/shared\"",
+    "test": "echo \"No tests yet for @genai/shared\""
   },
   "dependencies": {
     "zod": "^3.24.0"

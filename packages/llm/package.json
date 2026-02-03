@@ -14,7 +14,8 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests yet for @genai/llm\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

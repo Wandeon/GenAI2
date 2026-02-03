@@ -1,5 +1,5 @@
 {
-  "name": "genai-observatory",
+  "name": "genai2",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.15.0",
@@ -8,6 +8,7 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "test": "turbo test",
     "clean": "turbo clean && rm -rf node_modules",
     "db:generate": "pnpm --filter @genai/db generate",
     "db:migrate": "pnpm --filter @genai/db migrate:dev",

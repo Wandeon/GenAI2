@@ -435,3 +435,77 @@ pnpm db:migrate       # Run migrations
 - Storing secrets in code or configs
 - Creating logs without rotation
 - Using weak passwords or default credentials
+
+---
+
+## Mandatory Planning Step
+
+Before writing any code for a non-trivial change:
+
+1. Produce a short PLAN including:
+   - Goal
+   - Files to change/create
+   - Data models touched
+   - New schemas needed
+   - Tests to add
+
+2. Wait for human confirmation.
+
+NO implementation until plan is approved.
+
+---
+
+## Scaffold Preservation Rule
+
+Never remove or simplify existing page scaffolds, layouts, or UX structures
+unless explicitly instructed.
+
+Placeholders may be added INSIDE existing structure,
+but structure must remain intact.
+
+If a scaffold seems excessive:
+→ Propose a refactor plan
+→ Do NOT delete.
+
+---
+
+## Zero Placeholder Policy
+
+UI placeholders are forbidden.
+
+Instead of:
+- "Placeholder"
+- "Coming soon"
+- Dummy cards
+
+Use:
+- Skeleton loaders
+- Empty states with explanation
+- Or real minimal implementations.
+
+Any literal placeholder text = NOT DONE.
+
+---
+
+## Database Change Protocol
+
+Any Prisma schema change MUST include:
+
+1. Migration file
+2. Update to docs/DECISIONS.md
+3. Rationale comment in schema
+4. Backward compatibility note
+
+PRs with schema changes missing these are invalid.
+
+---
+
+## LLM Cost Guardrail
+
+Any feature that increases LLM usage must state:
+
+- Expected cost per event
+- Expected daily cost
+- Mitigation strategy
+
+If not provided → do not implement.

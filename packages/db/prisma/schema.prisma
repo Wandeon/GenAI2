@@ -18,9 +18,9 @@ datasource db {
 // ============================================================================
 
 enum TrustTier {
-  AUTHORITATIVE  // Official announcements, press releases
-  STANDARD       // Quality journalism, established sources
-  LOW            // Aggregators, social media, user-generated
+  AUTHORITATIVE // Official announcements, press releases
+  STANDARD // Quality journalism, established sources
+  LOW // Aggregators, social media, user-generated
 }
 
 enum SourceType {
@@ -37,6 +37,28 @@ enum SourceType {
   LOBSTERS
 }
 
+enum EventStatus {
+  RAW // Just created from source
+  ENRICHED // GM processed (has artifacts)
+  VERIFIED // Relationships validated
+  PUBLISHED // Visible in Observatory
+  QUARANTINED // Flagged for review
+  BLOCKED // Rejected (spam, duplicate, irrelevant)
+}
+
+enum ImpactLevel {
+  BREAKING // Major announcement, funding, launch
+  HIGH // Significant development
+  MEDIUM // Notable but not urgent
+  LOW // Background noise, minor update
+}
+
+enum EvidenceRole {
+  PRIMARY // Main source for this event
+  SUPPORTING // Additional confirmation
+  CONTEXT // Background information
+}
+
 // ============================================================================
 // EVIDENCE LAYER - Immutable record of what we retrieved
 // ============================================================================
@@ -48,9 +70,9 @@ model EvidenceSource {
   domain       String
   trustTier    TrustTier @default(STANDARD)
 
-  snapshots    EvidenceSnapshot[]
+  snapshots EvidenceSnapshot[]
 
-  createdAt    DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([canonicalUrl])
   @@index([domain])
@@ -58,25 +80,25 @@ model EvidenceSource {
 }
 
 model EvidenceSnapshot {
-  id          String   @id @default(cuid())
-  sourceId    String
+  id       String @id @default(cuid())
+  sourceId String
 
   // What we saw at this moment
   title       String?
   author      String?
   publishedAt DateTime?
-  retrievedAt DateTime @default(now())
+  retrievedAt DateTime  @default(now())
 
   // Content fingerprint
-  contentHash String   // SHA-256 of fullText
-  fullText    String?  @db.Text
+  contentHash String // SHA-256 of fullText
+  fullText    String? @db.Text
 
   // HTTP metadata
-  httpStatus  Int?
-  headers     Json?
+  httpStatus Int?
+  headers    Json?
 
-  source      EvidenceSource @relation(fields: [sourceId], references: [id])
-  eventLinks  EventEvidence[]
+  source     EvidenceSource  @relation(fields: [sourceId], references: [id])
+  eventLinks EventEvidence[]
 
   @@index([sourceId])
   @@index([contentHash])
@@ -84,19 +106,75 @@ model EvidenceSnapshot {
   @@map("evidence_snapshots")
 }
 
-// Event Layer (placeholder)
+// ============================================================================
+// EVENT LAYER - What happened in the world (append-only state machine)
+// ============================================================================
+
 model Event {
-  id          String   @id @default(cuid())
-  fingerprint String   @unique
-  occurredAt  DateTime
-  title       String
-  status      String   @default("RAW")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String @id @default(cuid())
+  fingerprint String @unique
+
+  // Core event data
+  occurredAt DateTime
+  title      String
+  titleHr    String?
+
+  // Classification
+  impactLevel ImpactLevel @default(MEDIUM)
+  importance  Float       @default(0)
+
+  // Append-only state machine
+  status        EventStatus         @default(RAW)
+  statusHistory EventStatusChange[]
+
+  // Relations
+  evidence EventEvidence[]
+  // topics      EventTopic[]      // TODO: Add when Topic layer is complete
+  // mentions    EntityMention[]   // TODO: Add when Entity layer is complete
+  // artifacts   EventArtifact[]   // TODO: Add when Artifact layer is complete
+
+  // Traceability
+  sourceType  SourceType
+  sourceId    String
+  ingestRunId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([occurredAt])
+  @@index([importance])
+  @@index([impactLevel])
+  @@index([status])
   @@index([fingerprint])
   @@map("events")
+}
+
+model EventStatusChange {
+  id         String       @id @default(cuid())
+  eventId    String
+  fromStatus EventStatus?
+  toStatus   EventStatus
+  reason     String
+  changedAt  DateTime     @default(now())
+  changedBy  String?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_status_changes")
+}
+
+model EventEvidence {
+  id         String       @id @default(cuid())
+  eventId    String
+  snapshotId String
+  role       EvidenceRole @default(PRIMARY)
+
+  event    Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  snapshot EvidenceSnapshot @relation(fields: [snapshotId], references: [id])
+
+  @@unique([eventId, snapshotId])
+  @@map("event_evidence")
 }
 
 // Entity Layer (placeholder)
@@ -113,11 +191,11 @@ model Entity {
 
 // Topic Layer (placeholder)
 model Topic {
-  id        String  @id @default(cuid())
-  name      String  @unique
+  id        String @id @default(cuid())
+  name      String @unique
   nameHr    String
-  slug      String  @unique
-  sortOrder Int     @default(0)
+  slug      String @unique
+  sortOrder Int    @default(0)
 
   @@map("topics")
 }

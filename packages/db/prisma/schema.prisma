@@ -85,6 +85,31 @@ enum MentionRole {
   MENTIONED // Referenced but not central
 }
 
+enum RelationshipStatus {
+  PENDING // Awaiting validation
+  APPROVED // Passed safety gate
+  QUARANTINED // Needs human review
+  REJECTED // Failed safety gate
+}
+
+enum RelationType {
+  // Low risk - single source OK
+  RELEASED
+  ANNOUNCED
+  PUBLISHED
+
+  // Medium risk - prefer 2+ sources
+  PARTNERED
+  INTEGRATED
+  FUNDED
+
+  // High risk - require authoritative OR 2+ sources
+  ACQUIRED
+  BANNED
+  BEATS
+  CRITICIZED
+}
+
 // ============================================================================
 // EVIDENCE LAYER - Immutable record of what we retrieved
 // ============================================================================
@@ -292,9 +317,9 @@ model Entity {
   firstSeen DateTime @default(now())
   lastSeen  DateTime @default(now())
 
-  mentions EntityMention[]
-  // sourceRels    Relationship[] @relation("source")  // TODO: Add when Relationship layer is complete
-  // targetRels    Relationship[] @relation("target")  // TODO: Add when Relationship layer is complete
+  mentions   EntityMention[]
+  sourceRels Relationship[]  @relation("source")
+  targetRels Relationship[]  @relation("target")
 
   @@unique([name, type])
   @@index([type])
@@ -327,6 +352,37 @@ model EntityMention {
 
   @@unique([eventId, entityId])
   @@map("entity_mentions")
+}
+
+// ============================================================================
+// RELATIONSHIP LAYER - Edges between entities (with safety gates)
+// ============================================================================
+
+model Relationship {
+  id String @id @default(cuid())
+
+  sourceId String
+  targetId String
+  type     RelationType
+
+  eventId String
+
+  status          RelationshipStatus @default(PENDING)
+  statusReason    String?
+  modelConfidence Float?
+
+  occurredAt  DateTime
+  createdAt   DateTime  @default(now())
+  validatedAt DateTime?
+
+  source Entity @relation("source", fields: [sourceId], references: [id])
+  target Entity @relation("target", fields: [targetId], references: [id])
+
+  @@index([sourceId])
+  @@index([targetId])
+  @@index([type])
+  @@index([status])
+  @@map("relationships")
 }
 
 // Topic Layer (placeholder)

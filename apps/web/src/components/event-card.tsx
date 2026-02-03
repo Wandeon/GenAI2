@@ -40,7 +40,9 @@ export function EventCard({
   return (
     <article
       className={cn(
-        "border-l-4 rounded-r-lg p-4 cursor-pointer transition-colors",
+        "border-l-4 rounded-r-lg p-4 cursor-pointer",
+        "transition-all duration-300 ease-in-out",
+        "animate-in fade-in-0 slide-in-from-bottom-2",
         impactColors[impactLevel],
         isSelected && "ring-2 ring-primary",
         "hover:bg-accent/50"

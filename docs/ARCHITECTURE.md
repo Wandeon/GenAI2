@@ -148,3 +148,64 @@ Violations must fail CI.
 * Opinionated political commentary.
 
 GenAI2 is an **observatory**, not a publisher.
+
+---
+
+## Deployment Topology
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DEPLOYMENT TARGETS                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   STAGING:     https://v2.genai.hr    ← Active development                  │
+│   PRODUCTION:  https://genai.hr       ← Future (WordPress currently)        │
+│                                                                             │
+│   Server:      VPS-00 (37.120.190.251)                                      │
+│   Deploy path: /opt/genai2                                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────┐
+                    │   Cloudflare    │
+                    │   (DNS only)    │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │     Caddy       │
+                    │  (TLS + Proxy)  │
+                    │   VPS-00:443    │
+                    └────────┬────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          │                  │                  │
+          ▼                  ▼                  ▼
+    ┌───────────┐     ┌───────────┐     ┌───────────┐
+    │    Web    │     │    API    │     │  Worker   │
+    │   :3000   │     │   :4000   │     │ (no port) │
+    │  Next.js  │     │  Fastify  │     │  BullMQ   │
+    └─────┬─────┘     └─────┬─────┘     └─────┬─────┘
+          │                 │                 │
+          └────────────┬────┴────────────────┘
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+          ▼                         ▼
+    ┌───────────┐           ┌───────────┐
+    │ PostgreSQL│           │   Redis   │
+    │   :5432   │           │   :6379   │
+    └───────────┘           └───────────┘
+```
+
+### Container Images
+
+All images are built via GitHub Actions and pushed to GHCR:
+
+* `ghcr.io/wandeon/genai2-web:latest`
+* `ghcr.io/wandeon/genai2-api:latest`
+* `ghcr.io/wandeon/genai2-worker:latest`
+
+### Deployment Trigger
+
+Push to `main` → GitHub Actions builds images → SSH to VPS-00 → `docker compose pull && up`

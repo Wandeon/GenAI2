@@ -325,11 +325,11 @@ When creating new files:
 
 All devices are on the same **Tailnet** (Tailscale network).
 
-| Host | Tailscale IP | Role | Services |
-|------|--------------|------|----------|
-| **GPU-01** (ArtemiPC) | 100.89.2.111 | Dev + Gateway | WSL, Ollama Local, development |
-| **VPS-00** | 100.97.156.41 | App Server | Next.js, API, Worker, Admin |
-| **Docker Desktop** | localhost | Local Services | Redis, PostgreSQL (dev) |
+| Host | Tailscale IP | Public IP | Role |
+|------|--------------|-----------|------|
+| **GPU-01** (ArtemiPC) | 100.89.2.111 | - | Dev + Gateway, WSL, Ollama |
+| **VPS-00** | 100.97.156.41 | 37.120.190.251 | Production server |
+| **Docker Desktop** | localhost | - | Local dev services |
 
 ### Secrets Management - Infisical
 
@@ -342,6 +342,100 @@ INFISICAL_ENVIRONMENT=prod
 ```
 
 Pull secrets: `infisical export --env=prod > .env`
+
+---
+
+## Deployment
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ⚠️  DEPLOYMENT TARGETS - READ CAREFULLY                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  STAGING:  https://v2.genai.hr     ← Current development target             │
+│  PRODUCTION: https://genai.hr      ← DO NOT DEPLOY until ready              │
+│                                                                             │
+│  Server: VPS-00 (37.120.190.251)                                            │
+│  SSH: ssh deploy@100.97.156.41 (via Tailscale)                              │
+│  App directory: /opt/genai2                                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Deployment Architecture
+
+```
+GitHub Actions (on push to main)
+        │
+        ▼
+┌───────────────────┐
+│  Build & Push     │  → ghcr.io/wandeon/genai2-web:latest
+│  Docker Images    │  → ghcr.io/wandeon/genai2-api:latest
+│                   │  → ghcr.io/wandeon/genai2-worker:latest
+└───────────────────┘
+        │
+        ▼ (SSH to VPS-00)
+┌───────────────────┐
+│  docker compose   │  /opt/genai2/docker-compose.yml
+│  pull & up        │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│  Caddy Reverse    │  /etc/caddy/Caddyfile
+│  Proxy            │  v2.genai.hr → localhost:3000 (web)
+│                   │              → localhost:4000 (api)
+└───────────────────┘
+```
+
+### Services on VPS-00
+
+| Container | Port | Purpose |
+|-----------|------|---------|
+| genai2-web-1 | 3000 | Next.js frontend |
+| genai2-api-1 | 4000 | Fastify + tRPC API |
+| genai2-worker-1 | - | BullMQ processors |
+| genai2-postgres-1 | 5432 | PostgreSQL database |
+| genai2-redis-1 | 6379 | Redis for queues |
+
+### Manual Deployment
+
+If GitHub Actions deployment fails or secrets aren't configured:
+
+```bash
+# SSH to VPS (via Tailscale)
+ssh deploy@100.97.156.41
+
+# Pull latest images and restart
+cd /opt/genai2
+docker compose pull
+docker compose up -d --remove-orphans
+docker compose ps  # Verify all healthy
+```
+
+### Caddy Configuration
+
+The reverse proxy config for v2.genai.hr is in `/etc/caddy/Caddyfile`:
+- `/api/*` and `/trpc/*` → localhost:4000 (API)
+- Everything else → localhost:3000 (Web)
+
+To reload Caddy after config changes:
+```bash
+sudo systemctl reload caddy
+```
+
+### Health Checks
+
+```bash
+# API health
+curl https://v2.genai.hr/api/health
+
+# Web app
+curl -I https://v2.genai.hr
+
+# Container status
+ssh deploy@100.97.156.41 "docker compose -f /opt/genai2/docker-compose.yml ps"
+```
 
 ---
 

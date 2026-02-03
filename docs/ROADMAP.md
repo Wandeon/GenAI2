@@ -47,10 +47,13 @@ The "holy crap" moment happens in Week 2, not Week 10.
 * [x] tRPC setup + type-safe client
 * [x] Layout shell (sidebar, header, context panel)
 * [x] Lane component + EventCard
+* [x] tRPC API route handler
+* [x] Mock events with time filtering
+* [x] Keyboard navigation hook (j/k/[/])
 * [ ] Search bar with instant results
 * [ ] Connect to existing APIs (HN, GitHub, Papers)
-* [ ] Time Machine scrubber (flagship UX)
-* [ ] Context panel + keyboard nav (j/k/[/])
+* [ ] Time Machine wired to tRPC filter
+* [ ] Context panel showing selected event
 * [ ] Mobile layout (tabs, swipe)
 
 **Gate:**

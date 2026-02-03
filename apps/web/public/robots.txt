@@ -1,0 +1,5 @@
+# GenAI Observatory
+User-agent: *
+Allow: /
+
+Sitemap: https://genai.hr/sitemap.xml

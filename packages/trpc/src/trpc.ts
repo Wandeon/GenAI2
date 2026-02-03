@@ -7,6 +7,11 @@ export interface Context {
   // Placeholder - add session, db client, etc.
 }
 
+// Create context for each request
+export function createTRPCContext(): Context {
+  return {};
+}
+
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {

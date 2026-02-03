@@ -1,4 +1,5 @@
 import { TimeProvider } from "@/context/time-context";
+import { SelectionProvider } from "@/context/selection-context";
 import { ObservatoryShell } from "@/components/layout";
 
 export default function ObservatoryLayout({
@@ -8,7 +9,9 @@ export default function ObservatoryLayout({
 }) {
   return (
     <TimeProvider>
-      <ObservatoryShell>{children}</ObservatoryShell>
+      <SelectionProvider>
+        <ObservatoryShell>{children}</ObservatoryShell>
+      </SelectionProvider>
     </TimeProvider>
   );
 }

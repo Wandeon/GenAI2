@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
 import { useTime } from "@/context/time-context";
+import { useSelection } from "@/context/selection-context";
 
 export default function ObservatoryPage() {
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const { selectedEvent, selectEvent } = useSelection();
   const { targetTimestamp, isInPast, setCatchUpCount } = useTime();
 
   // Query all events (without time filter) for catch-up count calculation
@@ -58,10 +59,9 @@ export default function ObservatoryPage() {
       impactLevel={event.impactLevel}
       sourceCount={event.sourceCount}
       topics={event.topics}
-      isSelected={selectedEventId === event.id}
+      isSelected={selectedEvent?.id === event.id}
       onClick={() => {
-        setSelectedEventId(event.id);
-        console.log("Selected event:", event.id, event.url);
+        selectEvent(event);
       }}
     />
   );

@@ -1,23 +1,13 @@
 "use client";
 
-import type { ImpactLevel } from "@/components/event-card";
+import { useSelection } from "@/context/selection-context";
 
 interface ContextPanelProps {
-  selectedEvent: {
-    id: string;
-    title: string;
-    titleHr?: string;
-    occurredAt: Date;
-    impactLevel: ImpactLevel;
-    sourceCount: number;
-    topics?: string[];
-    summary?: string;
-    summaryHr?: string;
-  } | null;
   onClose: () => void;
 }
 
-export function ContextPanel({ selectedEvent, onClose }: ContextPanelProps) {
+export function ContextPanel({ onClose }: ContextPanelProps) {
+  const { selectedEvent } = useSelection();
   if (!selectedEvent) {
     return (
       <aside className="w-80 border-l bg-card p-4 hidden xl:block">
@@ -49,22 +39,13 @@ export function ContextPanel({ selectedEvent, onClose }: ContextPanelProps) {
             {selectedEvent.titleHr || selectedEvent.title}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {selectedEvent.occurredAt.toLocaleDateString("hr-HR", {
+            {new Date(selectedEvent.occurredAt).toLocaleDateString("hr-HR", {
               day: "numeric",
               month: "long",
               year: "numeric",
             })}
           </p>
         </div>
-
-        {(selectedEvent.summaryHr || selectedEvent.summary) && (
-          <div>
-            <h4 className="text-sm font-medium mb-1">Sazetak</h4>
-            <p className="text-sm text-muted-foreground">
-              {selectedEvent.summaryHr || selectedEvent.summary}
-            </p>
-          </div>
-        )}
 
         <div>
           <h4 className="text-sm font-medium mb-1">Izvori</h4>

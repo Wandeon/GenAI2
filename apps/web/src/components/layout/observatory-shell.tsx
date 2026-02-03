@@ -1,23 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { ContextPanel } from "./context-panel";
 import { KeyboardNavigation } from "@/components/keyboard-navigation";
-import type { ImpactLevel } from "@/components/event-card";
-
-interface SelectedEvent {
-  id: string;
-  title: string;
-  titleHr?: string;
-  occurredAt: Date;
-  impactLevel: ImpactLevel;
-  sourceCount: number;
-  topics?: string[];
-  summary?: string;
-  summaryHr?: string;
-}
+import { useSelection } from "@/context/selection-context";
 
 interface ObservatoryShellProps {
   children: React.ReactNode;
@@ -25,11 +13,7 @@ interface ObservatoryShellProps {
 
 export function ObservatoryShell({ children }: ObservatoryShellProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
-
-  const handleCloseContext = useCallback(() => {
-    setSelectedEvent(null);
-  }, []);
+  const { clearSelection } = useSelection();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -44,10 +28,7 @@ export function ObservatoryShell({ children }: ObservatoryShellProps) {
           <div className="flex-1 overflow-y-auto p-4">
             {children}
           </div>
-          <ContextPanel
-            selectedEvent={selectedEvent}
-            onClose={handleCloseContext}
-          />
+          <ContextPanel onClose={clearSelection} />
         </main>
       </div>
     </div>

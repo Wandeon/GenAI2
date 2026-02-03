@@ -4,9 +4,9 @@
 
 **Goal:** Ship a magical Observatory that makes users say "holy crap" - live multi-lane glass cockpit with Time Machine scrubber, search, and real data.
 
-**Architecture:** Next.js 15 App Router with tRPC for type-safe queries. Three lanes showing events by category. Time Machine scrubber filters by timestamp. Context panel shows event details.
+**Architecture:** Next.js 16 App Router with tRPC for type-safe queries. Three lanes showing events by category. Time Machine scrubber filters by timestamp. Context panel shows event details.
 
-**Tech Stack:** Next.js 15, tRPC, Tailwind CSS v4, @tanstack/react-query, Prisma
+**Tech Stack:** Next.js 16, tRPC, Tailwind CSS v4, @tanstack/react-query, Prisma
 
 ---
 

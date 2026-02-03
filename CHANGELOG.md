@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial monorepo scaffold with Turborepo + pnpm workspaces
-- **apps/web**: Next.js 15 with App Router, 5 surface pages (Observatory, Daily, Explore, Watchlists, Library)
+- **apps/web**: Next.js 16 with App Router, 5 surface pages (Observatory, Daily, Explore, Watchlists, Library)
 - **apps/api**: Fastify + tRPC server with session middleware
 - **apps/worker**: BullMQ processor scaffolds (evidence-snapshot, event-create, event-enrich)
 - **apps/admin**: React Admin dashboard placeholder

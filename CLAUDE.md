@@ -7,7 +7,7 @@
 
 **Project:** GenAI Observatory ("World State AI Observatory")
 **Type:** Multi-surface AI news intelligence platform
-**Stack:** Next.js 15, TypeScript, PostgreSQL, Prisma, tRPC, Tailwind CSS v4, shadcn/ui
+**Stack:** Next.js 16, TypeScript, PostgreSQL, Prisma, tRPC, Tailwind CSS v4, shadcn/ui
 **Purpose:** Transform GenAI.hr from WordPress blog to real-time AI observatory
 
 ## Critical Rules

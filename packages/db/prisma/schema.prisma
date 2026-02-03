@@ -110,6 +110,12 @@ enum RelationType {
   CRITICIZED
 }
 
+enum TopicOrigin {
+  MANUAL // Human assigned
+  LLM // Model assigned
+  RULE // Rule-based
+}
+
 // ============================================================================
 // EVIDENCE LAYER - Immutable record of what we retrieved
 // ============================================================================
@@ -182,7 +188,7 @@ model Event {
   evidence  EventEvidence[]
   artifacts EventArtifact[]
   mentions  EntityMention[]
-  // topics      EventTopic[]      // TODO: Add when Topic layer is complete
+  topics    EventTopic[]
 
   // Traceability
   sourceType  SourceType
@@ -385,15 +391,57 @@ model Relationship {
   @@map("relationships")
 }
 
-// Topic Layer (placeholder)
+// ============================================================================
+// TOPIC LAYER - Hierarchical taxonomy
+// ============================================================================
+
 model Topic {
-  id        String @id @default(cuid())
-  name      String @unique
-  nameHr    String
-  slug      String @unique
-  sortOrder Int    @default(0)
+  id String @id @default(cuid())
+
+  name        String  @unique
+  nameHr      String
+  slug        String  @unique
+  description String?
+
+  // Hierarchy
+  parentId String?
+  parent   Topic?  @relation("hierarchy", fields: [parentId], references: [id])
+  children Topic[] @relation("hierarchy")
+
+  // Display
+  color     String?
+  icon      String?
+  sortOrder Int     @default(0)
+
+  events  EventTopic[]
+  aliases TopicAlias[]
 
   @@map("topics")
+}
+
+model TopicAlias {
+  id      String @id @default(cuid())
+  topicId String
+  alias   String
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([alias])
+  @@map("topic_aliases")
+}
+
+model EventTopic {
+  id         String      @id @default(cuid())
+  eventId    String
+  topicId    String
+  confidence Float       @default(1.0)
+  origin     TopicOrigin @default(LLM)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id])
+
+  @@unique([eventId, topicId])
+  @@map("event_topics")
 }
 
 // Session Layer (placeholder)

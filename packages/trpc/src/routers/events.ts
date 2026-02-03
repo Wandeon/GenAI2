@@ -1,51 +1,38 @@
+// packages/trpc/src/routers/events.ts
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
+import { fetchHNTopStories } from "../services/hn-feed";
+import { fetchGitHubTrending } from "../services/github-feed";
+import { fetchArxivPapers } from "../services/arxiv-feed";
+import type { NormalizedEvent } from "@genai/shared";
 
 const ImpactLevel = z.enum(["BREAKING", "HIGH", "MEDIUM", "LOW"]);
 
-const mockEvents = [
-  {
-    id: "1",
-    title: "OpenAI announces GPT-5 with reasoning capabilities",
-    titleHr: "OpenAI najavljuje GPT-5 s mogućnostima rasuđivanja",
-    occurredAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    impactLevel: "BREAKING" as const,
-    sourceCount: 12,
-    topics: ["OpenAI", "LLM", "GPT"],
-    summaryHr: "OpenAI je danas najavio GPT-5.",
-    status: "PUBLISHED",
-  },
-  {
-    id: "2",
-    title: "Anthropic raises $2B Series C",
-    titleHr: "Anthropic prikupio 2 milijarde dolara",
-    occurredAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-    impactLevel: "HIGH" as const,
-    sourceCount: 8,
-    topics: ["Anthropic", "Financiranje"],
-    status: "PUBLISHED",
-  },
-  {
-    id: "3",
-    title: "New scaling laws paper published",
-    titleHr: "Objavljen novi rad o zakonima skaliranja",
-    occurredAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-    impactLevel: "MEDIUM" as const,
-    sourceCount: 3,
-    topics: ["Istraživanje"],
-    status: "PUBLISHED",
-  },
-  {
-    id: "4",
-    title: "Minor update to PyTorch documentation",
-    titleHr: "Manja nadogradnja PyTorch dokumentacije",
-    occurredAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-    impactLevel: "LOW" as const,
-    sourceCount: 1,
-    topics: ["PyTorch", "Dokumentacija"],
-    status: "PUBLISHED",
-  },
-];
+// Cache for feed results (simple in-memory, 5 min TTL)
+let feedCache: { events: NormalizedEvent[]; timestamp: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getAggregatedEvents(): Promise<NormalizedEvent[]> {
+  const now = Date.now();
+
+  if (feedCache && now - feedCache.timestamp < CACHE_TTL) {
+    return feedCache.events;
+  }
+
+  // Fetch all feeds in parallel
+  const [hnEvents, ghEvents, arxivEvents] = await Promise.all([
+    fetchHNTopStories(30),
+    fetchGitHubTrending(),
+    fetchArxivPapers(),
+  ]);
+
+  // Combine and sort by date
+  const allEvents = [...hnEvents, ...ghEvents, ...arxivEvents];
+  allEvents.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
+
+  feedCache = { events: allEvents, timestamp: now };
+  return allEvents;
+}
 
 export const eventsRouter = router({
   list: publicProcedure
@@ -53,29 +40,32 @@ export const eventsRouter = router({
       z.object({
         cursor: z.string().optional(),
         limit: z.number().min(1).max(100).default(20),
-        status: z.string().optional(),
+        sourceType: z.enum(["HN", "GITHUB", "ARXIV"]).optional(),
         impactLevel: ImpactLevel.optional(),
         beforeTime: z.date().optional(),
       })
     )
     .query(async ({ input }) => {
-      let items = [...mockEvents];
+      let items = await getAggregatedEvents();
 
+      // Filter by source type
+      if (input.sourceType) {
+        items = items.filter((e) => e.sourceType === input.sourceType);
+      }
+
+      // Filter by time
       if (input.beforeTime) {
         items = items.filter(
           (e) => e.occurredAt.getTime() <= input.beforeTime!.getTime()
         );
       }
 
+      // Filter by impact
       if (input.impactLevel) {
         items = items.filter((e) => e.impactLevel === input.impactLevel);
       }
 
-      if (input.status) {
-        items = items.filter((e) => e.status === input.status);
-      }
-
-      items.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
+      // Apply limit
       items = items.slice(0, input.limit);
 
       return {
@@ -85,7 +75,8 @@ export const eventsRouter = router({
     }),
 
   byId: publicProcedure.input(z.string()).query(async ({ input }) => {
-    return mockEvents.find((e) => e.id === input) ?? null;
+    const events = await getAggregatedEvents();
+    return events.find((e) => e.id === input) ?? null;
   }),
 
   search: publicProcedure
@@ -96,12 +87,13 @@ export const eventsRouter = router({
       })
     )
     .query(async ({ input }) => {
+      const events = await getAggregatedEvents();
       const q = input.query.toLowerCase();
-      return mockEvents
+
+      return events
         .filter(
           (e) =>
             e.title.toLowerCase().includes(q) ||
-            e.titleHr?.toLowerCase().includes(q) ||
             e.topics.some((t) => t.toLowerCase().includes(q))
         )
         .slice(0, input.limit);

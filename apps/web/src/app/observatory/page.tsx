@@ -10,7 +10,6 @@ export default function ObservatoryPage() {
 
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 50,
-    status: "PUBLISHED",
   });
 
   const events = eventsData?.items ?? [];

@@ -59,6 +59,15 @@ enum EvidenceRole {
   CONTEXT // Background information
 }
 
+enum ArtifactType {
+  HEADLINE // { en: string, hr: string }
+  SUMMARY // { en: string, hr: string, bulletPoints: string[] }
+  GM_TAKE // { take: string, takeHr: string, confidence: string }
+  WHY_MATTERS // { text: string, textHr: string, audience: string[] }
+  ENTITY_EXTRACT // { entities: Array<{name, type, role, confidence}> }
+  TOPIC_ASSIGN // { topics: Array<{slug, confidence}> }
+}
+
 // ============================================================================
 // EVIDENCE LAYER - Immutable record of what we retrieved
 // ============================================================================
@@ -128,10 +137,10 @@ model Event {
   statusHistory EventStatusChange[]
 
   // Relations
-  evidence EventEvidence[]
+  evidence  EventEvidence[]
+  artifacts EventArtifact[]
   // topics      EventTopic[]      // TODO: Add when Topic layer is complete
   // mentions    EntityMention[]   // TODO: Add when Entity layer is complete
-  // artifacts   EventArtifact[]   // TODO: Add when Artifact layer is complete
 
   // Traceability
   sourceType  SourceType
@@ -175,6 +184,74 @@ model EventEvidence {
 
   @@unique([eventId, snapshotId])
   @@map("event_evidence")
+}
+
+// ============================================================================
+// ARTIFACT LAYER - GM outputs with versioning and typed payloads
+// ============================================================================
+
+model EventArtifact {
+  id           String       @id @default(cuid())
+  eventId      String
+  artifactType ArtifactType
+  version      Int          @default(1)
+
+  // Structured payload (validated by Zod at runtime)
+  payload Json
+
+  // Provenance
+  modelUsed     String
+  promptVersion String
+  promptHash    String
+  inputHash     String
+  runId         String
+
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, artifactType, version])
+  @@index([eventId])
+  @@index([runId])
+  @@map("event_artifacts")
+}
+
+// ============================================================================
+// LLM OBSERVABILITY - Cost tracking and replay capability
+// ============================================================================
+
+model LLMRun {
+  id String @id @default(cuid())
+
+  // What was called
+  provider String
+  model    String
+
+  // Usage
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+
+  // Cost (in USD cents)
+  costCents Int
+
+  // Timing
+  latencyMs Int
+
+  // Replay capability
+  promptHash String
+  inputHash  String
+
+  // Context
+  processorName String
+  eventId       String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([eventId])
+  @@index([processorName])
+  @@map("llm_runs")
 }
 
 // Entity Layer (placeholder)

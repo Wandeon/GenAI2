@@ -10,15 +10,22 @@ COPY apps/worker/package.json ./apps/worker/
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/llm/package.json ./packages/llm/
-RUN pnpm install --frozen-lockfile --prod=false
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/trpc/package.json ./packages/trpc/
+RUN pnpm install --frozen-lockfile
 
 # Builder
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=deps /app/packages ./packages
 COPY . .
 RUN pnpm db:generate
 RUN pnpm build --filter @genai/worker
+
+# Create deployment with pnpm deploy (self-contained node_modules)
+RUN pnpm --filter @genai/worker deploy --prod /app/deploy
 
 # Runner
 FROM base AS runner
@@ -28,12 +35,13 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 worker
 
-COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
-COPY --from=builder /app/apps/worker/package.json ./apps/worker/
-COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+# Copy deployed package (includes node_modules)
+COPY --from=builder /app/deploy ./
+# Copy built dist
+COPY --from=builder /app/apps/worker/dist ./dist
+# Copy prisma for migrations
+COPY --from=builder /app/packages/db/prisma ./prisma
 
 USER worker
 
-CMD ["node", "apps/worker/dist/index.js"]
+CMD ["node", "dist/index.js"]

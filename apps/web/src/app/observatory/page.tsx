@@ -4,12 +4,16 @@ import { useState, useMemo } from "react";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
+import { useTime } from "@/context/time-context";
 
 export default function ObservatoryPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const { targetTimestamp, isInPast } = useTime();
 
+  // Pass beforeTime filter when viewing the past
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 100,
+    beforeTime: isInPast ? targetTimestamp : undefined,
   });
 
   const events = eventsData?.items ?? [];

@@ -11,6 +11,10 @@
     "./gm": {
       "types": "./src/gm/index.ts",
       "default": "./src/gm/index.ts"
+    },
+    "./clients": {
+      "types": "./src/clients/index.ts",
+      "default": "./src/clients/index.ts"
     }
   },
   "scripts": {
@@ -22,6 +26,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "typescript": "^5.8.0"
   },
   "peerDependencies": {

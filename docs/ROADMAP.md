@@ -57,19 +57,19 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 **Gate:** Build passes, lanes render mock data via tRPC ✅
 
-### Sprint 0.2 – Discovery + Real Feeds (NEXT)
+### Sprint 0.2 – Discovery + Real Feeds ✅ DONE
 
-* [ ] Search bar with instant results
-* [ ] HN feed integration
-* [ ] GitHub feed integration
-* [ ] Papers feed integration
+* [x] Search bar with instant results
+* [x] HN feed integration
+* [x] GitHub feed integration
+* [x] Papers feed integration
 
 **Gate:**
-* Searching "openai" shows results
-* HN/GitHub/Papers events appear in lanes
-* Clicking event logs ID to console
+* Searching "openai" shows results ✅
+* HN/GitHub/Papers events appear in lanes ✅
+* Clicking event logs ID to console ✅
 
-### Sprint 0.3 – Time Machine
+### Sprint 0.3 – Time Machine (NEXT)
 
 * [ ] Scrubber UI functional
 * [ ] Time filter wired to tRPC query

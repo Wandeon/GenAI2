@@ -103,7 +103,7 @@ describe("evidence-snapshot processor", () => {
         // Arrange
         const content = "This is the article content";
         // SHA-256 of "This is the article content"
-        const expectedHash = "a1b2c3d4e5f6"; // Placeholder - actual hash will be computed
+        const expectedHash = "3d04dae99b2f754b8064d1e24b317f694f13fa3d573981d43674293b10373a38";
 
         const mockSource = {
           id: "source-123",
@@ -181,19 +181,35 @@ describe("evidence-snapshot processor", () => {
     });
 
     describe("trust tier determination", () => {
-      it("assigns AUTHORITATIVE tier for openai.com", async () => {
-        // Arrange
+      /**
+       * Helper function to set up mocks for trust tier tests.
+       * Reduces repetitive mock configuration across trust tier test cases.
+       */
+      function setupTrustTierMocks(config: {
+        url: string;
+        domain: string;
+        trustTier: "AUTHORITATIVE" | "STANDARD" | "LOW";
+      }) {
         vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
           id: "source-1",
-          canonicalUrl: "https://openai.com/blog/announcement",
-          domain: "openai.com",
-          trustTier: "AUTHORITATIVE",
+          canonicalUrl: config.url,
+          domain: config.domain,
+          trustTier: config.trustTier,
         } as never);
         vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
           id: "snap-1",
           sourceId: "source-1",
           contentHash: "hash",
         } as never);
+      }
+
+      it("assigns AUTHORITATIVE tier for openai.com", async () => {
+        // Arrange
+        setupTrustTierMocks({
+          url: "https://openai.com/blog/announcement",
+          domain: "openai.com",
+          trustTier: "AUTHORITATIVE",
+        });
 
         // Act
         await createEvidenceSnapshot({
@@ -215,17 +231,11 @@ describe("evidence-snapshot processor", () => {
 
       it("assigns AUTHORITATIVE tier for anthropic.com", async () => {
         // Arrange
-        vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
-          id: "source-1",
-          canonicalUrl: "https://anthropic.com/news",
+        setupTrustTierMocks({
+          url: "https://anthropic.com/news",
           domain: "anthropic.com",
           trustTier: "AUTHORITATIVE",
-        } as never);
-        vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
-          id: "snap-1",
-          sourceId: "source-1",
-          contentHash: "hash",
-        } as never);
+        });
 
         // Act
         await createEvidenceSnapshot({
@@ -247,17 +257,11 @@ describe("evidence-snapshot processor", () => {
 
       it("assigns AUTHORITATIVE tier for deepmind.google", async () => {
         // Arrange
-        vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
-          id: "source-1",
-          canonicalUrl: "https://deepmind.google/research",
+        setupTrustTierMocks({
+          url: "https://deepmind.google/research",
           domain: "deepmind.google",
           trustTier: "AUTHORITATIVE",
-        } as never);
-        vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
-          id: "snap-1",
-          sourceId: "source-1",
-          contentHash: "hash",
-        } as never);
+        });
 
         // Act
         await createEvidenceSnapshot({
@@ -279,17 +283,11 @@ describe("evidence-snapshot processor", () => {
 
       it("assigns STANDARD tier for general news sites", async () => {
         // Arrange
-        vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
-          id: "source-1",
-          canonicalUrl: "https://techcrunch.com/ai-news",
+        setupTrustTierMocks({
+          url: "https://techcrunch.com/ai-news",
           domain: "techcrunch.com",
           trustTier: "STANDARD",
-        } as never);
-        vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
-          id: "snap-1",
-          sourceId: "source-1",
-          contentHash: "hash",
-        } as never);
+        });
 
         // Act
         await createEvidenceSnapshot({
@@ -311,17 +309,11 @@ describe("evidence-snapshot processor", () => {
 
       it("assigns LOW tier for reddit.com", async () => {
         // Arrange
-        vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
-          id: "source-1",
-          canonicalUrl: "https://reddit.com/r/MachineLearning",
+        setupTrustTierMocks({
+          url: "https://reddit.com/r/MachineLearning",
           domain: "reddit.com",
           trustTier: "LOW",
-        } as never);
-        vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
-          id: "snap-1",
-          sourceId: "source-1",
-          contentHash: "hash",
-        } as never);
+        });
 
         // Act
         await createEvidenceSnapshot({
@@ -343,17 +335,11 @@ describe("evidence-snapshot processor", () => {
 
       it("assigns LOW tier for twitter.com", async () => {
         // Arrange
-        vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
-          id: "source-1",
-          canonicalUrl: "https://twitter.com/user/status/123",
+        setupTrustTierMocks({
+          url: "https://twitter.com/user/status/123",
           domain: "twitter.com",
           trustTier: "LOW",
-        } as never);
-        vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
-          id: "snap-1",
-          sourceId: "source-1",
-          contentHash: "hash",
-        } as never);
+        });
 
         // Act
         await createEvidenceSnapshot({
@@ -375,17 +361,11 @@ describe("evidence-snapshot processor", () => {
 
       it("assigns LOW tier for x.com (Twitter rebrand)", async () => {
         // Arrange
-        vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue({
-          id: "source-1",
-          canonicalUrl: "https://x.com/user/status/123",
+        setupTrustTierMocks({
+          url: "https://x.com/user/status/123",
           domain: "x.com",
           trustTier: "LOW",
-        } as never);
-        vi.mocked(prisma.evidenceSnapshot.create).mockResolvedValue({
-          id: "snap-1",
-          sourceId: "source-1",
-          contentHash: "hash",
-        } as never);
+        });
 
         // Act
         await createEvidenceSnapshot({

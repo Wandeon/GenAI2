@@ -69,16 +69,17 @@ The "holy crap" moment happens in Week 2, not Week 10.
 * HN/GitHub/Papers events appear in lanes ✅
 * Clicking event logs ID to console ✅
 
-### Sprint 0.3 – Time Machine (NEXT)
+### Sprint 0.3 – Time Machine ✅ DONE
 
-* [ ] Scrubber UI functional
-* [ ] Time filter wired to tRPC query
-* [ ] Catch-up count calculation
-* [ ] Animation on time change
+* [x] Scrubber UI functional
+* [x] Time filter wired to tRPC query
+* [x] Catch-up count calculation
+* [x] Animation on time change
+* [x] Keyboard navigation ([ ] Shift+[ Shift+])
 
-**Gate:** Dragging scrubber filters visible events
+**Gate:** Dragging scrubber filters visible events ✅
 
-### Sprint 0.4 – Context + Mobile
+### Sprint 0.4 – Context + Mobile (NEXT)
 
 * [ ] Context panel shows selected event details
 * [ ] Mobile tab navigation

@@ -68,6 +68,23 @@ enum ArtifactType {
   TOPIC_ASSIGN // { topics: Array<{slug, confidence}> }
 }
 
+enum EntityType {
+  COMPANY
+  LAB
+  MODEL
+  PRODUCT
+  PERSON
+  REGULATION
+  DATASET
+  BENCHMARK
+}
+
+enum MentionRole {
+  SUBJECT // Primary actor
+  OBJECT // Thing being acted upon
+  MENTIONED // Referenced but not central
+}
+
 // ============================================================================
 // EVIDENCE LAYER - Immutable record of what we retrieved
 // ============================================================================
@@ -139,8 +156,8 @@ model Event {
   // Relations
   evidence  EventEvidence[]
   artifacts EventArtifact[]
+  mentions  EntityMention[]
   // topics      EventTopic[]      // TODO: Add when Topic layer is complete
-  // mentions    EntityMention[]   // TODO: Add when Entity layer is complete
 
   // Traceability
   sourceType  SourceType
@@ -254,16 +271,62 @@ model LLMRun {
   @@map("llm_runs")
 }
 
-// Entity Layer (placeholder)
-model Entity {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  type      String
-  createdAt DateTime @default(now())
+// ============================================================================
+// ENTITY LAYER - Companies, models, products, people
+// ============================================================================
 
+model Entity {
+  id String @id @default(cuid())
+
+  name   String
+  nameHr String?
+  slug   String     @unique
+  type   EntityType
+
+  description   String? @db.Text
+  descriptionHr String? @db.Text
+
+  aliases    EntityAlias[]
+  importance Float         @default(0)
+
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  mentions EntityMention[]
+  // sourceRels    Relationship[] @relation("source")  // TODO: Add when Relationship layer is complete
+  // targetRels    Relationship[] @relation("target")  // TODO: Add when Relationship layer is complete
+
+  @@unique([name, type])
+  @@index([type])
+  @@index([importance])
   @@index([slug])
   @@map("entities")
+}
+
+model EntityAlias {
+  id       String @id @default(cuid())
+  entityId String
+  alias    String
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, alias])
+  @@index([alias])
+  @@map("entity_aliases")
+}
+
+model EntityMention {
+  id         String      @id @default(cuid())
+  eventId    String
+  entityId   String
+  role       MentionRole @default(MENTIONED)
+  confidence Float       @default(1.0)
+
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  entity Entity @relation(fields: [entityId], references: [id])
+
+  @@unique([eventId, entityId])
+  @@map("entity_mentions")
 }
 
 // Topic Layer (placeholder)

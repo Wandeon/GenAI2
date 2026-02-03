@@ -57,6 +57,33 @@ model EvidenceSource {
   @@map("evidence_sources")
 }
 
+model EvidenceSnapshot {
+  id          String   @id @default(cuid())
+  sourceId    String
+
+  // What we saw at this moment
+  title       String?
+  author      String?
+  publishedAt DateTime?
+  retrievedAt DateTime @default(now())
+
+  // Content fingerprint
+  contentHash String   // SHA-256 of fullText
+  fullText    String?  @db.Text
+
+  // HTTP metadata
+  httpStatus  Int?
+  headers     Json?
+
+  source      EvidenceSource @relation(fields: [sourceId], references: [id])
+  eventLinks  EventEvidence[]
+
+  @@index([sourceId])
+  @@index([contentHash])
+  @@index([retrievedAt])
+  @@map("evidence_snapshots")
+}
+
 // Event Layer (placeholder)
 model Event {
   id          String   @id @default(cuid())

@@ -6,12 +6,30 @@ import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
 import { useTime } from "@/context/time-context";
 import { useSelection } from "@/context/selection-context";
-import { useMobileLane } from "@/context/mobile-lane-context";
+import { useMobileLane, type LaneId } from "@/context/mobile-lane-context";
+import { useSwipe } from "@/hooks";
+
+const lanes: LaneId[] = ["hn", "github", "arxiv"];
 
 export default function ObservatoryPage() {
   const { selectedEvent, selectEvent } = useSelection();
   const { targetTimestamp, isInPast, setCatchUpCount } = useTime();
-  const { activeLane } = useMobileLane();
+  const { activeLane, setActiveLane } = useMobileLane();
+
+  const currentIndex = lanes.indexOf(activeLane);
+
+  const { handleTouchStart, handleTouchEnd } = useSwipe({
+    onSwipeLeft: () => {
+      if (currentIndex < lanes.length - 1) {
+        setActiveLane(lanes[currentIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      if (currentIndex > 0) {
+        setActiveLane(lanes[currentIndex - 1]);
+      }
+    },
+  });
 
   // Query all events (without time filter) for catch-up count calculation
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
@@ -118,8 +136,12 @@ export default function ObservatoryPage() {
         </Lane>
       </div>
 
-      {/* Mobile: Single lane based on active tab */}
-      <div className="md:hidden h-full pb-20">
+      {/* Mobile: Single lane based on active tab with swipe support */}
+      <div
+        className="md:hidden h-full pb-20"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {activeLane === "hn" && (
           <Lane
             title="Hacker News"

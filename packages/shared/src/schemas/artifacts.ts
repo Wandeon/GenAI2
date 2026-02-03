@@ -59,6 +59,28 @@ export const TopicAssignPayload = z.object({
   ),
 });
 
+export const RelationshipExtractPayload = z.object({
+  relationships: z.array(
+    z.object({
+      sourceEntity: z.string(),
+      targetEntity: z.string(),
+      type: z.enum([
+        "RELEASED",
+        "ANNOUNCED",
+        "PUBLISHED",
+        "PARTNERED",
+        "INTEGRATED",
+        "FUNDED",
+        "ACQUIRED",
+        "BANNED",
+        "BEATS",
+        "CRITICIZED",
+      ]),
+      confidence: z.number().min(0).max(1),
+    })
+  ),
+});
+
 // ============================================================================
 // TYPE INFERENCE
 // ============================================================================
@@ -69,6 +91,7 @@ export type GMTakePayload = z.infer<typeof GMTakePayload>;
 export type WhyMattersPayload = z.infer<typeof WhyMattersPayload>;
 export type EntityExtractPayload = z.infer<typeof EntityExtractPayload>;
 export type TopicAssignPayload = z.infer<typeof TopicAssignPayload>;
+export type RelationshipExtractPayload = z.infer<typeof RelationshipExtractPayload>;
 
 // ============================================================================
 // ARTIFACT TYPE MAP - Maps ArtifactType enum to payload schema
@@ -81,6 +104,7 @@ export const ArtifactSchemas = {
   WHY_MATTERS: WhyMattersPayload,
   ENTITY_EXTRACT: EntityExtractPayload,
   TOPIC_ASSIGN: TopicAssignPayload,
+  RELATIONSHIP_EXTRACT: RelationshipExtractPayload,
 } as const;
 
 export type ArtifactType = keyof typeof ArtifactSchemas;
@@ -92,6 +116,7 @@ export type ArtifactPayloadMap = {
   WHY_MATTERS: WhyMattersPayload;
   ENTITY_EXTRACT: EntityExtractPayload;
   TOPIC_ASSIGN: TopicAssignPayload;
+  RELATIONSHIP_EXTRACT: RelationshipExtractPayload;
 };
 
 // Validate payload against artifact type

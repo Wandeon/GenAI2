@@ -66,6 +66,7 @@ enum ArtifactType {
   WHY_MATTERS // { text: string, textHr: string, audience: string[] }
   ENTITY_EXTRACT // { entities: Array<{name, type, role, confidence}> }
   TOPIC_ASSIGN // { topics: Array<{slug, confidence}> }
+  RELATIONSHIP_EXTRACT // { relationships: Array<{source, target, type, confidence}> }
 }
 
 enum EntityType {

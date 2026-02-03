@@ -1,3 +1,4 @@
+import { TimeProvider } from "@/context/time-context";
 import { ObservatoryShell } from "@/components/layout";
 
 export default function ObservatoryLayout({
@@ -5,5 +6,9 @@ export default function ObservatoryLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <ObservatoryShell>{children}</ObservatoryShell>;
+  return (
+    <TimeProvider>
+      <ObservatoryShell>{children}</ObservatoryShell>
+    </TimeProvider>
+  );
 }

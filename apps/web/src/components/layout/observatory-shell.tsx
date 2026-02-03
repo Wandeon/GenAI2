@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { ContextPanel } from "./context-panel";
@@ -23,18 +23,8 @@ interface ObservatoryShellProps {
 }
 
 export function ObservatoryShell({ children }: ObservatoryShellProps) {
-  const [scrubberValue, setScrubberValue] = useState(100);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
-  const [catchUpCount, setCatchUpCount] = useState(0);
-
-  useEffect(() => {
-    if (scrubberValue < 100) {
-      setCatchUpCount(Math.round((100 - scrubberValue) * 0.5));
-    } else {
-      setCatchUpCount(0);
-    }
-  }, [scrubberValue]);
 
   const handleCloseContext = useCallback(() => {
     setSelectedEvent(null);
@@ -45,9 +35,6 @@ export function ObservatoryShell({ children }: ObservatoryShellProps) {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
-          scrubberValue={scrubberValue}
-          onScrubberChange={setScrubberValue}
-          catchUpCount={catchUpCount}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />

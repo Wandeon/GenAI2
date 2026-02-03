@@ -1,24 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { TimeMachine } from "@/components/time-machine";
+import { useTime } from "@/context/time-context";
 import { trpc } from "@/trpc";
 
 interface HeaderProps {
-  scrubberValue: number;
-  onScrubberChange: (value: number) => void;
-  catchUpCount?: number;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
 export function Header({
-  scrubberValue,
-  onScrubberChange,
-  catchUpCount = 0,
   searchQuery,
   onSearchChange,
 }: HeaderProps) {
+  const { scrubberValue, setScrubberValue, isInPast } = useTime();
+
+  // Calculate catch up count based on scrubber position
+  const catchUpCount = useMemo(() => {
+    if (isInPast) {
+      return Math.round((100 - scrubberValue) * 0.5);
+    }
+    return 0;
+  }, [scrubberValue, isInPast]);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -160,7 +164,7 @@ export function Header({
       <div className="px-4 pb-4">
         <TimeMachine
           value={scrubberValue}
-          onChange={onScrubberChange}
+          onChange={setScrubberValue}
           catchUpCount={catchUpCount}
         />
       </div>

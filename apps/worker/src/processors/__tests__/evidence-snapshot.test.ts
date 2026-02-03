@@ -153,10 +153,10 @@ describe("evidence-snapshot processor", () => {
         vi.mocked(prisma.evidenceSource.upsert).mockResolvedValue(mockSource as never);
 
         const capturedHashes: string[] = [];
-        vi.mocked(prisma.evidenceSnapshot.create).mockImplementation(async (args) => {
+        vi.mocked(prisma.evidenceSnapshot.create).mockImplementation((args) => {
           const hash = (args as { data: { contentHash: string } }).data.contentHash;
           capturedHashes.push(hash);
-          return { id: "snap-" + capturedHashes.length, sourceId: "source-123", contentHash: hash } as never;
+          return Promise.resolve({ id: "snap-" + capturedHashes.length, sourceId: "source-123", contentHash: hash }) as never;
         });
 
         // Act

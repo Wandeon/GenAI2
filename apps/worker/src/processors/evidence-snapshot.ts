@@ -89,6 +89,19 @@ const LOW_TRUST_DOMAINS = [
 ];
 
 // ============================================================================
+// LOGGING
+// ============================================================================
+
+/**
+ * Simple tagged logger for evidence-snapshot processor.
+ * Suppresses logs during tests, uses consistent prefix for filtering.
+ * TODO: Replace with proper logger when worker package has one.
+ */
+function log(message: string): void {
+  process.env.NODE_ENV !== "test" && console.log(`[evidence-snapshot] ${message}`);
+}
+
+// ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
@@ -274,7 +287,7 @@ export async function processEvidenceSnapshot(
 ): Promise<void> {
   const { url, sourceType, sourceId } = job.data;
 
-  console.log(`Processing evidence snapshot for ${url}`);
+  log(`Processing evidence snapshot for ${url}`);
 
   // Create the evidence snapshot
   const result = await createEvidenceSnapshot({
@@ -283,7 +296,7 @@ export async function processEvidenceSnapshot(
     sourceId,
   });
 
-  console.log(
+  log(
     `Evidence snapshot created: source=${result.sourceId}, snapshot=${result.snapshotId}, isNew=${result.isNewSource}`
   );
 }

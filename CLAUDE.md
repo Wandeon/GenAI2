@@ -323,11 +323,25 @@ When creating new files:
 
 ## Infrastructure
 
-| Host | Role | Services |
-|------|------|----------|
-| **VPS-00** | App Server | Next.js, API, Worker, Admin |
-| **GPU-01** | Gateway | API Gateway, Ollama Local |
-| **Docker Desktop** | Local Dev | Infisical, Redis, PostgreSQL |
+All devices are on the same **Tailnet** (Tailscale network).
+
+| Host | Tailscale IP | Role | Services |
+|------|--------------|------|----------|
+| **GPU-01** (ArtemiPC) | 100.89.2.111 | Dev + Gateway | WSL, Ollama Local, development |
+| **VPS-00** | 100.97.156.41 | App Server | Next.js, API, Worker, Admin |
+| **Docker Desktop** | localhost | Local Services | Redis, PostgreSQL (dev) |
+
+### Secrets Management - Infisical
+
+Infisical credentials are in `.bashrc` on both GPU-01 and VPS-00:
+```bash
+INFISICAL_PROJECT_ID=...
+INFISICAL_CLIENT_ID=...
+INFISICAL_CLIENT_SECRET=...
+INFISICAL_ENVIRONMENT=prod
+```
+
+Pull secrets: `infisical export --env=prod > .env`
 
 ---
 

@@ -2,47 +2,57 @@
 
 ## Infrastructure Overview
 
+All devices are connected via **Tailscale** (same Tailnet).
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        INFRASTRUCTURE                           │
+│                     TAILNET INFRASTRUCTURE                      │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐       │
-│  │   VPS-00    │     │   GPU-01    │     │   Docker    │       │
-│  │  (Deploy)   │     │  (Gateway)  │     │  Desktop    │       │
-│  ├─────────────┤     ├─────────────┤     ├─────────────┤       │
-│  │ • Next.js   │     │ • API GW    │     │ • Infisical │       │
-│  │ • API       │     │ • Ollama    │     │ • Redis     │       │
-│  │ • Worker    │     │ • GPU tasks │     │ • Postgres  │       │
-│  │ • Admin     │     │             │     │   (dev)     │       │
-│  └─────────────┘     └─────────────┘     └─────────────┘       │
+│  ┌──────────────────┐          ┌──────────────────┐            │
+│  │     GPU-01       │          │     VPS-00       │            │
+│  │   (ArtemiPC)     │          │  100.97.156.41   │            │
+│  │  100.89.2.111    │          ├──────────────────┤            │
+│  ├──────────────────┤          │ • Next.js        │            │
+│  │ • WSL (dev)      │   ───▶   │ • Fastify API    │            │
+│  │ • Ollama Local   │  deploy  │ • BullMQ Worker  │            │
+│  │ • Docker Desktop │          │ • Admin Panel    │            │
+│  │ • Redis (dev)    │          │ • PostgreSQL     │            │
+│  │ • PostgreSQL(dev)│          │ • Redis          │            │
+│  └──────────────────┘          └──────────────────┘            │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Hosts
 
-| Host | Role | Services |
-|------|------|----------|
-| **VPS-00** | Application Server | Next.js, Fastify API, BullMQ Worker, Admin |
-| **GPU-01** | Gateway + GPU | API Gateway, Ollama, GPU inference |
-| **Docker Desktop** | Local Services | Infisical, Redis, PostgreSQL (dev) |
+| Host | Tailscale IP | Role | Services |
+|------|--------------|------|----------|
+| **GPU-01** (ArtemiPC) | 100.89.2.111 | Dev + Gateway | WSL, Ollama Local, Docker Desktop |
+| **VPS-00** | 100.97.156.41 | Application Server | Next.js, API, Worker, Admin, PostgreSQL, Redis |
 
 ## Secrets Management - Infisical
 
-Secrets are managed via Infisical running in Docker Desktop.
+Secrets are managed via **Infisical Cloud**. Credentials are pre-configured in `.bashrc` on both GPU-01 and VPS-00.
+
+### Environment Variables (in .bashrc)
+
+```bash
+export INFISICAL_PROJECT_ID="..."
+export INFISICAL_CLIENT_ID="..."
+export INFISICAL_CLIENT_SECRET="..."
+export INFISICAL_ENVIRONMENT="prod"
+```
 
 ### Setup
 
 ```bash
-# Start Infisical
-docker compose -f infisical/docker-compose.yml up -d
+# Install Infisical CLI (if not installed)
+curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
+sudo apt-get install infisical
 
-# Login to Infisical CLI
-infisical login
-
-# Pull secrets to .env
-infisical export --env=dev > .env
+# Pull secrets (credentials auto-loaded from .bashrc)
+infisical export --env=prod > .env
 ```
 
 ### Secret Categories

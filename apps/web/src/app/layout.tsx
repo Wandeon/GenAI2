@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TRPCProvider } from "@/trpc";
 
 export const metadata: Metadata = {
   title: "GenAI Observatory",
@@ -14,8 +15,7 @@ export default function RootLayout({
   return (
     <html lang="hr">
       <body className="min-h-screen bg-background font-sans antialiased">
-        {/* TODO: Add tRPC provider, session provider */}
-        {children}
+        <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>
   );

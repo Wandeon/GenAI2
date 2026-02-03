@@ -14,7 +14,8 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests yet for @genai/db\""
   },
   "dependencies": {
     "@prisma/client": "^6.2.0"

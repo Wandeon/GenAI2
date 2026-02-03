@@ -49,7 +49,9 @@ export class GMService {
   constructor(
     private llm: LLMClient,
     private contract: typeof GM_CONTRACT = GM_CONTRACT
-  ) {}
+  ) {
+    void this.llm;
+  }
 
   /**
    * Generate an artifact for an event

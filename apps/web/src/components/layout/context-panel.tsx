@@ -38,13 +38,22 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
           <h3 className="font-medium text-lg">
             {selectedEvent.titleHr || selectedEvent.title}
           </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {new Date(selectedEvent.occurredAt).toLocaleDateString("hr-HR", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground">
+              {new Date(selectedEvent.occurredAt).toLocaleDateString("hr-HR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+            {selectedEvent.sourceType && (
+              <span className="text-xs text-muted-foreground">
+                {selectedEvent.sourceType === "HN" && "🔶 Hacker News"}
+                {selectedEvent.sourceType === "GITHUB" && "🐙 GitHub"}
+                {selectedEvent.sourceType === "ARXIV" && "📄 arXiv"}
+              </span>
+            )}
+          </div>
         </div>
 
         <div>
@@ -67,6 +76,20 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {selectedEvent.url && (
+          <div className="pt-4 border-t">
+            <a
+              href={selectedEvent.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <span>Pogledaj izvor</span>
+              <span>↗</span>
+            </a>
           </div>
         )}
       </div>

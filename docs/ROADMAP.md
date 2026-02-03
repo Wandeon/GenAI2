@@ -27,7 +27,7 @@ The "holy crap" moment happens in Week 2, not Week 10.
 | ----- | ---------------------- | --------- | --------------- |
 | 0     | Observatory Wow Slice  | 2 weeks   | **Complete** ✅  |
 | 1     | Data Foundation        | 2 weeks   | **Complete** ✅  |
-| 2     | Event Pipeline         | 2 weeks   | Planned         |
+| 2     | Event Pipeline         | 2 weeks   | **Complete** ✅  |
 | 3     | Observatory Production | 2 weeks   | Planned         |
 | 4     | Daily Run              | 1.5 weeks | Planned         |
 | 5     | Explore                | 2 weeks   | Planned         |
@@ -168,24 +168,64 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 ---
 
-## Phase 2: Event Pipeline
+## Phase 2: Event Pipeline ✅ COMPLETE
 
 **Owner:** Worker
 
 **Goal:** Events flow automatically with GM processing
 
-* [ ] evidence-snapshot processor
-* [ ] event-create processor
-* [ ] event-enrich processor
-* [ ] entity-extract processor
-* [ ] relationship-extract + safety gate
-* [ ] topic-assign processor
-* [ ] watchlist-match processor
-* [ ] Queue orchestration
+### Sprint 2.1 – Evidence Snapshot Processor ✅ DONE
 
-**Gate:**
+* [x] Creates immutable snapshots of source URLs
+* [x] Content hash for deduplication
+* [x] Trust tier assignment
 
-* New HN post → Event with artifacts in < 2 minutes
+### Sprint 2.2 – Event Create Processor ✅ DONE
+
+* [x] Creates events with fingerprint deduplication
+* [x] Links events to evidence snapshots
+* [x] Initial RAW status assignment
+
+### Sprint 2.3 – Event Enrich Processor ✅ DONE
+
+* [x] GM artifacts generation (headline, summary, take)
+* [x] Zod schema validation for payloads
+* [x] LLM cost tracking with Gemini pricing
+
+### Sprint 2.4 – Entity Extract Processor ✅ DONE
+
+* [x] Extracts and links entities from event content
+* [x] Entity type classification (COMPANY, LAB, MODEL, etc.)
+* [x] Entity alias matching for fuzzy lookups
+
+### Sprint 2.5 – Relationship Extract Processor ✅ DONE
+
+* [x] Extracts relationships between entities
+* [x] Safety gate integration using validateRelationship from @genai/shared
+* [x] Risk-based validation (LOW/MEDIUM/HIGH)
+
+### Sprint 2.6 – Topic Assign Processor ✅ DONE
+
+* [x] Assigns topics based on event content
+* [x] LLM-based topic classification
+* [x] Topic hierarchy support
+
+### Sprint 2.7 – Watchlist Match Processor ✅ DONE
+
+* [x] Matches events to user watchlists
+* [x] Keyword, entity, and topic matching
+* [x] WatchlistMatch record creation
+
+### Sprint 2.8 – Queue Orchestration ✅ DONE
+
+* [x] Complete pipeline wiring (feed → snapshot → create → enrich → extract → match)
+* [x] Parallel completion tracking (entity-extract + topic-assign before relationship-extract)
+* [x] Feed trigger integration
+
+**Gate:** ✅ PASSED
+
+* [x] New HN post → Event with artifacts in < 2 minutes
+* [x] All processors tested and operational
 
 ---
 

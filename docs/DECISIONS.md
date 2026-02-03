@@ -83,3 +83,36 @@ This document records key technical choices for the scaffold.
 - **Decision**: Events use `fingerprint` (SHA-256 hash of sourceType + date + normalized title) for dedup.
 - **Why**: Same story from multiple sources creates single event with multiple evidence links.
 - **Implementation**: `packages/db/src/backfill.ts` has `generateFingerprint()` helper.
+
+---
+
+## Phase 2 Event Pipeline Decisions (2026-02-03)
+
+### 16) Split File Pattern for Processors
+- **Decision**: Each processor uses a split file pattern: `.types.ts`, `.utils.ts`, and main processor file.
+- **Why**: Keeps individual files under the 300-line limit per CLAUDE.md guidelines.
+- **Pattern**:
+  - `processor.types.ts` - TypeScript interfaces and Zod schemas
+  - `processor.utils.ts` - Helper functions and utilities
+  - `processor.ts` - Main processor logic with BullMQ worker
+- **Example**: `evidence-snapshot.ts`, `evidence-snapshot.types.ts`, `evidence-snapshot.utils.ts`
+
+### 17) Tagged Logger Pattern
+- **Decision**: Processors use a `log()` helper function that is suppressed in tests via NODE_ENV check.
+- **Why**: Reduces test output noise while maintaining verbose logging in development/production.
+- **Implementation**: `if (process.env.NODE_ENV !== 'test') console.log(...)` pattern in processor utils.
+
+### 18) Parallel Completion Tracking
+- **Decision**: entity-extract and topic-assign processors run in parallel, both must complete before relationship-extract.
+- **Why**: Relationships depend on entities being extracted, but topics are independent. Parallel execution reduces end-to-end latency.
+- **Implementation**: Event tracks completion status; relationship-extract checks both entity and topic extraction complete before processing.
+
+### 19) LLM Cost Tracking with Gemini Pricing
+- **Decision**: All LLM calls log cost using Gemini pricing: input $0.075/1M tokens, output $0.30/1M tokens.
+- **Why**: Enables cost monitoring and optimization. Stored in cents (integer) for precision.
+- **Implementation**: `LLMRun` model records model, tokens (input/output), cost, latency, and prompt hash.
+
+### 20) Status-Based Processor Filtering
+- **Decision**: Most processors only work on events in ENRICHED or PUBLISHED status.
+- **Why**: Prevents processing incomplete or quarantined events. State machine ensures proper flow.
+- **Flow**: RAW (create) → ENRICHED (enrich) → Processing (extract/assign/match) → PUBLISHED

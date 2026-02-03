@@ -155,13 +155,29 @@ Automatic on merge to main:
 
 ```bash
 # Check deployment status
-ssh vps-00 'docker compose ps'
+ssh deploy@100.97.156.41 'cd /opt/genai2 && docker compose ps'
 
 # View logs
-ssh vps-00 'docker compose logs -f web'
+ssh deploy@100.97.156.41 'cd /opt/genai2 && docker compose logs -f web'
 
-# Check health endpoint
-curl https://genai.hr/api/health
+# Check health endpoint (staging)
+curl https://v2.genai.hr/api/health
+```
+
+### 6. Database Migrations (Post-Deployment)
+
+After deploying schema changes, run migrations:
+
+```bash
+# SSH to VPS
+ssh deploy@100.97.156.41
+
+# Run migrations
+cd /opt/genai2
+docker compose exec api npx prisma migrate deploy
+
+# Run seed (if needed)
+docker compose exec api npx prisma db seed
 ```
 
 ## Docker Compose - VPS-00

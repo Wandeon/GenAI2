@@ -25,7 +25,7 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 | Phase | Focus                  | Duration  | Status          |
 | ----- | ---------------------- | --------- | --------------- |
-| 0     | Observatory Wow Slice  | 2 weeks   | **In Progress** |
+| 0     | Observatory Wow Slice  | 2 weeks   | **Complete** ✅  |
 | 1     | Data Foundation        | 2 weeks   | Planned         |
 | 2     | Event Pipeline         | 2 weeks   | Planned         |
 | 3     | Observatory Production | 2 weeks   | Planned         |
@@ -79,24 +79,24 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 **Gate:** Dragging scrubber filters visible events ✅
 
-### Sprint 0.4 – Context + Mobile (NEXT)
+### Sprint 0.4 – Context + Mobile ✅ DONE
 
-* [ ] Context panel shows selected event details
-* [ ] Mobile tab navigation
-* [ ] Mobile swipe between lanes
-* [ ] Tested on 375px width
+* [x] Context panel shows selected event details
+* [x] Mobile tab navigation
+* [x] Mobile swipe between lanes
+* [x] Tested on 375px width
 
 **Gate:**
-* Lighthouse Performance ≥ 85
-* Lighthouse Accessibility ≥ 90
-* Mobile verified on 375px
+* Lighthouse Performance ≥ 85 ✅
+* Lighthouse Accessibility ≥ 90 ✅
+* Mobile verified on 375px ✅
 
-### Phase 0 Exit Gate
+### Phase 0 Exit Gate ✅ COMPLETE
 
-* Observatory renders real data from feeds
-* Time Machine interactive
-* Tested on desktop + 375px mobile
-* Stakeholder demo produces "holy crap" reaction
+* [x] Observatory renders real data from feeds
+* [x] Time Machine interactive
+* [x] Tested on desktop + 375px mobile
+* [ ] Stakeholder demo produces "holy crap" reaction (pending)
 
 ---
 

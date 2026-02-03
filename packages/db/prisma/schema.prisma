@@ -14,18 +14,46 @@ datasource db {
 }
 
 // ============================================================================
-// PLACEHOLDER MODELS - Will be expanded per plan
+// ENUMS
 // ============================================================================
 
-// Evidence Layer (placeholder)
+enum TrustTier {
+  AUTHORITATIVE  // Official announcements, press releases
+  STANDARD       // Quality journalism, established sources
+  LOW            // Aggregators, social media, user-generated
+}
+
+enum SourceType {
+  HN
+  GITHUB
+  ARXIV
+  NEWSAPI
+  REDDIT
+  LEADERBOARD
+  HUGGINGFACE
+  PRODUCTHUNT
+  DEVTO
+  YOUTUBE
+  LOBSTERS
+}
+
+// ============================================================================
+// EVIDENCE LAYER - Immutable record of what we retrieved
+// ============================================================================
+
 model EvidenceSource {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   rawUrl       String
-  canonicalUrl String   @unique
+  canonicalUrl String    @unique
   domain       String
-  createdAt    DateTime @default(now())
+  trustTier    TrustTier @default(STANDARD)
+
+  snapshots    EvidenceSnapshot[]
+
+  createdAt    DateTime  @default(now())
 
   @@index([canonicalUrl])
+  @@index([domain])
   @@map("evidence_sources")
 }
 

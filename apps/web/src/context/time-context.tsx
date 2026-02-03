@@ -23,6 +23,10 @@ interface TimeContextValue {
   // Is viewing the past?
   isInPast: boolean;
 
+  // Number of events that would be "caught up" (missed events)
+  catchUpCount: number;
+  setCatchUpCount: (count: number) => void;
+
   // Step functions for keyboard nav
   stepBack: () => void; // 1 hour back
   stepForward: () => void; // 1 hour forward
@@ -39,6 +43,7 @@ const DAY_STEP = (1 / 7) * 100; // 1 day as percentage of 7 days (~14.29%)
 
 export function TimeProvider({ children }: { children: ReactNode }) {
   const [scrubberValue, setScrubberValue] = useState(100);
+  const [catchUpCount, setCatchUpCount] = useState(0);
 
   const targetTimestamp = useMemo(() => {
     const now = Date.now();
@@ -75,6 +80,8 @@ export function TimeProvider({ children }: { children: ReactNode }) {
       targetTimestamp,
       rangeMs: RANGE_MS,
       isInPast,
+      catchUpCount,
+      setCatchUpCount,
       stepBack,
       stepForward,
       dayBack,
@@ -85,6 +92,7 @@ export function TimeProvider({ children }: { children: ReactNode }) {
       scrubberValue,
       targetTimestamp,
       isInPast,
+      catchUpCount,
       stepBack,
       stepForward,
       dayBack,

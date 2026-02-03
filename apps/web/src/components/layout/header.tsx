@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { TimeMachine } from "@/components/time-machine";
 import { useTime } from "@/context/time-context";
 import { trpc } from "@/trpc";
@@ -14,15 +14,8 @@ export function Header({
   searchQuery,
   onSearchChange,
 }: HeaderProps) {
-  const { scrubberValue, setScrubberValue, isInPast } = useTime();
+  const { scrubberValue, setScrubberValue, catchUpCount } = useTime();
 
-  // Calculate catch up count based on scrubber position
-  const catchUpCount = useMemo(() => {
-    if (isInPast) {
-      return Math.round((100 - scrubberValue) * 0.5);
-    }
-    return 0;
-  }, [scrubberValue, isInPast]);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

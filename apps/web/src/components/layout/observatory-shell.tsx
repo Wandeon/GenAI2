@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { ContextPanel } from "./context-panel";
+import { KeyboardNavigation } from "@/components/keyboard-navigation";
 import type { ImpactLevel } from "@/components/event-card";
 
 interface SelectedEvent {
@@ -32,6 +33,7 @@ export function ObservatoryShell({ children }: ObservatoryShellProps) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <KeyboardNavigation />
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header

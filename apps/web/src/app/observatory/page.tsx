@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
@@ -8,15 +8,31 @@ import { useTime } from "@/context/time-context";
 
 export default function ObservatoryPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const { targetTimestamp, isInPast } = useTime();
+  const { targetTimestamp, isInPast, setCatchUpCount } = useTime();
 
-  // Pass beforeTime filter when viewing the past
+  // Query all events (without time filter) for catch-up count calculation
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 100,
-    beforeTime: isInPast ? targetTimestamp : undefined,
   });
 
-  const events = eventsData?.items ?? [];
+  const allEvents = eventsData?.items ?? [];
+
+  // Filter events locally based on targetTimestamp when viewing the past
+  const events = useMemo(() => {
+    if (!isInPast) return allEvents;
+    return allEvents.filter((e) => new Date(e.occurredAt) <= targetTimestamp);
+  }, [allEvents, isInPast, targetTimestamp]);
+
+  // Calculate and update catch-up count (events that occurred after targetTimestamp)
+  const catchUpCount = useMemo(() => {
+    if (!isInPast) return 0;
+    return allEvents.filter((e) => new Date(e.occurredAt) > targetTimestamp).length;
+  }, [allEvents, isInPast, targetTimestamp]);
+
+  // Update context with catch-up count
+  useEffect(() => {
+    setCatchUpCount(catchUpCount);
+  }, [catchUpCount, setCatchUpCount]);
 
   // Split by source type
   const hnEvents = useMemo(

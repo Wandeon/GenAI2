@@ -85,6 +85,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@genai/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@genai/trpc':
         specifier: workspace:*
         version: link:../../packages/trpc

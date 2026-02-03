@@ -14,8 +14,6 @@ interface ObservatoryShellProps {
 
 export function ObservatoryShell({ children }: ObservatoryShellProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  // Temporary state for mobile navigation - will be replaced with context in Task 5
-  const [activeTab, setActiveTab] = useState<"hn" | "github" | "arxiv">("hn");
   const { clearSelection } = useSelection();
 
   return (
@@ -34,7 +32,7 @@ export function ObservatoryShell({ children }: ObservatoryShellProps) {
           <ContextPanel onClose={clearSelection} />
         </main>
       </div>
-      <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <MobileNav />
     </div>
   );
 }

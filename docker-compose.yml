@@ -1,0 +1,96 @@
+# GenAI2 Production Docker Compose
+# Deploy: docker compose pull && docker compose up -d --remove-orphans
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-genai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-genai}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-genai} -d ${POSTGRES_DB:-genai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - genai-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - genai-network
+
+  web:
+    image: ghcr.io/wandeon/genai2-web:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - genai-network
+
+  api:
+    image: ghcr.io/wandeon/genai2-api:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "4000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-genai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-genai}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - genai-network
+
+  worker:
+    image: ghcr.io/wandeon/genai2-worker:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-genai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-genai}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - genai-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  genai-network:
+    driver: bridge

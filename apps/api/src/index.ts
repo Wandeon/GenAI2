@@ -33,8 +33,12 @@ await server.register(fastifyTRPCPlugin, {
   },
 });
 
-// Health check
+// Health check (both paths for flexibility)
 server.get("/health", async () => {
+  return { status: "ok", timestamp: new Date().toISOString() };
+});
+
+server.get("/api/health", async () => {
   return { status: "ok", timestamp: new Date().toISOString() };
 });
 

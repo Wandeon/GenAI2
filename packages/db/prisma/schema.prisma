@@ -1,0 +1,79 @@
+// ============================================================================
+// GenAI Observatory - Database Schema
+// ============================================================================
+// This is a placeholder schema. Full schema will be implemented in Phase 1.
+// See plan for complete data model with Evidence, Event, Entity layers.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// PLACEHOLDER MODELS - Will be expanded per plan
+// ============================================================================
+
+// Evidence Layer (placeholder)
+model EvidenceSource {
+  id           String   @id @default(cuid())
+  rawUrl       String
+  canonicalUrl String   @unique
+  domain       String
+  createdAt    DateTime @default(now())
+
+  @@index([canonicalUrl])
+  @@map("evidence_sources")
+}
+
+// Event Layer (placeholder)
+model Event {
+  id          String   @id @default(cuid())
+  fingerprint String   @unique
+  occurredAt  DateTime
+  title       String
+  status      String   @default("RAW")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([occurredAt])
+  @@index([fingerprint])
+  @@map("events")
+}
+
+// Entity Layer (placeholder)
+model Entity {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([slug])
+  @@map("entities")
+}
+
+// Topic Layer (placeholder)
+model Topic {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  nameHr    String
+  slug      String  @unique
+  sortOrder Int     @default(0)
+
+  @@map("topics")
+}
+
+// Session Layer (placeholder)
+model AnonSession {
+  id         String   @id @default(cuid())
+  token      String   @unique @default(cuid())
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([token])
+  @@map("anon_sessions")
+}

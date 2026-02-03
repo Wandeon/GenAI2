@@ -1,0 +1,23 @@
+{
+  "name": "genai-observatory",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @genai/db generate",
+    "db:migrate": "pnpm --filter @genai/db migrate:dev",
+    "db:push": "echo 'ERROR: Use db:migrate instead. Never use db:push.' && exit 1"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

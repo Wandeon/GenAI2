@@ -175,3 +175,84 @@ OLLAMA_LOCAL_URL=http://localhost:11434
 OLLAMA_CLOUD_URL=
 OLLAMA_CLOUD_API_KEY=
 ```
+
+---
+
+## Hard Rules
+
+- GM_TAKE and WHY_MATTERS MUST use a Hard Tasks model.
+- HEADLINE, SUMMARY, ENTITY_EXTRACT, TOPIC_ASSIGN MUST NOT use Hard Tasks models.
+- No processor may call an LLM directly.
+  All calls MUST go through GMService or LLMService wrapper.
+- All calls MUST write an LLMRun record.
+- If LLMRun logging fails → the processor must fail.
+
+---
+
+## Temperature Policy
+
+- Flash models: temperature <= 0.3  
+- Pro models: temperature <= 0.5  
+- Embeddings: temperature = 0  
+
+Any deviation requires justification in DECISIONS.md.
+
+---
+
+## Token Budgets
+
+| Artifact | Max Input Tokens | Max Output Tokens |
+|----------|------------------|-------------------|
+| HEADLINE | 1,000 | 200 |
+| SUMMARY | 2,000 | 500 |
+| GM_TAKE | 3,000 | 1,000 |
+| WHY_MATTERS | 3,000 | 1,000 |
+| ENTITY_EXTRACT | 2,000 | 800 |
+| TOPIC_ASSIGN | 1,000 | 300 |
+
+If exceeded → abort and log error.
+
+---
+
+## Cost Circuit Breaker
+
+System-wide limits:
+
+- Max cost per event: $0.02  
+- Max daily cost: configurable via ENV  
+
+If exceeded:
+
+1. Stop GM enrichment  
+2. Continue ingest + evidence only  
+3. Raise alert  
+
+---
+
+## Model Version Pinning
+
+Models must be referenced with explicit version IDs where supported.
+
+Upgrades require:
+- A/B test
+- Output diff
+- DECISIONS.md update
+
+---
+
+## Embedding Consistency
+
+Embedding model and dimensions are immutable once production starts.
+
+Changing embedding model requires:
+- Full re-embedding
+- Dual-index period
+- Migration plan
+
+---
+
+## Prompt & Input Cache
+
+- Store prompt text and input payload for 30 days  
+- After 30 days keep only hashes  
+- Enables replay while limiting storage growth

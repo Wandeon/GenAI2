@@ -9,21 +9,22 @@ export default function ObservatoryPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
-    limit: 50,
+    limit: 100,
   });
 
   const events = eventsData?.items ?? [];
 
-  const breakingEvents = useMemo(
-    () => events.filter((e) => e.impactLevel === "BREAKING"),
+  // Split by source type
+  const hnEvents = useMemo(
+    () => events.filter((e) => e.sourceType === "HN"),
     [events]
   );
-  const highEvents = useMemo(
-    () => events.filter((e) => e.impactLevel === "HIGH"),
+  const ghEvents = useMemo(
+    () => events.filter((e) => e.sourceType === "GITHUB"),
     [events]
   );
-  const otherEvents = useMemo(
-    () => events.filter((e) => e.impactLevel === "MEDIUM" || e.impactLevel === "LOW"),
+  const arxivEvents = useMemo(
+    () => events.filter((e) => e.sourceType === "ARXIV"),
     [events]
   );
 
@@ -38,53 +39,56 @@ export default function ObservatoryPage() {
       sourceCount={event.sourceCount}
       topics={event.topics}
       isSelected={selectedEventId === event.id}
-      onClick={() => setSelectedEventId(event.id)}
+      onClick={() => {
+        setSelectedEventId(event.id);
+        console.log("Selected event:", event.id, event.url);
+      }}
     />
   );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
       <Lane
-        title="Breaking"
-        icon={<span className="text-red-500">🔴</span>}
-        count={breakingEvents.length}
+        title="Hacker News"
+        icon={<span className="text-orange-500">🔶</span>}
+        count={hnEvents.length}
         isLoading={isLoading}
       >
-        {breakingEvents.length > 0 ? (
-          breakingEvents.map(renderEventCard)
+        {hnEvents.length > 0 ? (
+          hnEvents.map(renderEventCard)
         ) : (
           <p className="text-muted-foreground text-sm p-2">
-            Nema breaking vijesti
+            Nema HN vijesti
           </p>
         )}
       </Lane>
 
       <Lane
-        title="Važno"
-        icon={<span className="text-orange-500">🟠</span>}
-        count={highEvents.length}
+        title="GitHub"
+        icon={<span>🐙</span>}
+        count={ghEvents.length}
         isLoading={isLoading}
       >
-        {highEvents.length > 0 ? (
-          highEvents.map(renderEventCard)
+        {ghEvents.length > 0 ? (
+          ghEvents.map(renderEventCard)
         ) : (
           <p className="text-muted-foreground text-sm p-2">
-            Nema važnih vijesti
+            Nema GitHub projekata
           </p>
         )}
       </Lane>
 
       <Lane
-        title="Ostalo"
-        icon={<span>📰</span>}
-        count={otherEvents.length}
+        title="Radovi"
+        icon={<span>📄</span>}
+        count={arxivEvents.length}
         isLoading={isLoading}
       >
-        {otherEvents.length > 0 ? (
-          otherEvents.map(renderEventCard)
+        {arxivEvents.length > 0 ? (
+          arxivEvents.map(renderEventCard)
         ) : (
           <p className="text-muted-foreground text-sm p-2">
-            Nema ostalih vijesti
+            Nema radova
           </p>
         )}
       </Lane>

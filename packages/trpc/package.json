@@ -27,6 +27,7 @@
     "typescript": "^5.8.0"
   },
   "peerDependencies": {
-    "@genai/db": "workspace:*"
+    "@genai/db": "workspace:*",
+    "@genai/shared": "workspace:*"
   }
 }

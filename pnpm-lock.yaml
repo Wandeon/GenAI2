@@ -210,6 +210,9 @@ importers:
       '@genai/db':
         specifier: workspace:*
         version: link:../db
+      '@genai/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@trpc/client':
         specifier: ^11.0.0
         version: 11.9.0(@trpc/server@11.9.0(typescript@5.9.3))(typescript@5.9.3)

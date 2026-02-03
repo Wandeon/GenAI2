@@ -444,13 +444,77 @@ model EventTopic {
   @@map("event_topics")
 }
 
-// Session Layer (placeholder)
+// ============================================================================
+// SESSION & WATCHLIST LAYER - Server-side, HttpOnly cookie
+// ============================================================================
+
 model AnonSession {
-  id         String   @id @default(cuid())
-  token      String   @unique @default(cuid())
-  lastSeenAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id    String @id @default(cuid())
+  token String @unique @default(cuid())
+
+  lastSeenAt      DateTime @default(now())
+  lastEventCursor String?
+  preferences     Json     @default("{}")
+
+  watchlists Watchlist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([token])
   @@map("anon_sessions")
+}
+
+model Watchlist {
+  id        String @id @default(cuid())
+  sessionId String
+  name      String
+
+  entities WatchlistEntity[]
+  topics   WatchlistTopic[]
+  keywords String[]
+
+  lastNotifiedAt DateTime?
+
+  session AnonSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  matches WatchlistMatch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("watchlists")
+}
+
+model WatchlistEntity {
+  id          String    @id @default(cuid())
+  watchlistId String
+  entityId    String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id])
+
+  @@unique([watchlistId, entityId])
+  @@map("watchlist_entities")
+}
+
+model WatchlistTopic {
+  id          String    @id @default(cuid())
+  watchlistId String
+  topicId     String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id])
+
+  @@unique([watchlistId, topicId])
+  @@map("watchlist_topics")
+}
+
+model WatchlistMatch {
+  id          String   @id @default(cuid())
+  watchlistId String
+  eventId     String
+  matchedAt   DateTime @default(now())
+  seen        Boolean  @default(false)
+
+  watchlist Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, eventId])
+  @@index([watchlistId, seen])
+  @@map("watchlist_matches")
 }

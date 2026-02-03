@@ -34,6 +34,7 @@ The "holy crap" moment happens in Week 2, not Week 10.
 | 6     | Personalization        | 1.5 weeks | Planned         |
 | 7     | Library + Migration    | 2 weeks   | Planned         |
 | 8     | Polish + Launch        | 1.5 weeks | Planned         |
+| 9     | Council Show (GM Live) | 2 weeks   | Future          |
 
 ---
 
@@ -280,3 +281,77 @@ The single interaction that makes users say "holy crap":
 - Events that hadn't happened yet fade out
 - "Catch up" button appears: "Play 47 events at 2x speed"
 - Keyboard: `[` and `]` to step 1 hour, `Shift+[` and `Shift+]` for 1 day
+
+---
+
+## Phase 9: Council Show (GM Live)
+
+**Owner:** Worker / Web
+
+**Goal:** NotebookLM-style dynamic roundtable episodes, evidence-grounded
+
+> Full spec: `docs/specs/COUNCIL_SHOW.md`
+
+### The Vision
+
+Replace static daily briefings with a **thinking system** that generates dynamic "roundtable" episodes. A Director/Cast architecture where:
+
+- **Director** (cheap model) decides who speaks, what move type, when to stop
+- **Cast** (personas) generate constrained, evidence-linked content
+
+### Personas
+
+| Persona | Role |
+|---------|------|
+| **GM** | Host - tempo, transitions, summaries |
+| **Engineer** | Builder brain - technical reality checks |
+| **Skeptic** | Hype filter - attacks weak claims |
+| **Operator** | (Future) DevOps/cost reality |
+
+### Move Types
+
+`SETUP` → `TECH_READ` → `RISK_CHECK` → `CROSS_EXAM` → `EVIDENCE_CALL` → `TAKEAWAY` → `CUT`
+
+### Sprint 9.1 – Director Pipeline
+
+* [ ] Director prompt and rundown generator
+* [ ] Segment clustering from daily events
+* [ ] Turn plan generation
+* [ ] Cost tracking
+
+### Sprint 9.2 – Cast Personas
+
+* [ ] GM persona (extend existing contract)
+* [ ] Engineer persona contract + prompt
+* [ ] Skeptic persona contract + prompt
+* [ ] Turn generation pipeline
+
+### Sprint 9.3 – Episode Assembly
+
+* [ ] Sequential turn generation
+* [ ] Evidence linking validation
+* [ ] Croatian translation
+* [ ] Show notes summary
+
+### Sprint 9.4 – UI Integration
+
+* [ ] Daily Run surface update
+* [ ] Episode player component
+* [ ] Segment collapse/expand
+* [ ] Event chip → evidence panel linking
+
+**Gate:**
+
+* Daily episode generates in < 2 minutes
+* Cost per episode < $0.20
+* 100% of claims linked to evidence
+* "Holy crap this is good" reaction
+
+---
+
+## Future Considerations (Post Phase 9)
+
+* **Audio generation** - TTS for podcast-style consumption
+* **User questions** - Ask something, get answered in next episode
+* **Episode archive** - Browse past episodes
+* **Per-event threads** - Deeper dives on individual events

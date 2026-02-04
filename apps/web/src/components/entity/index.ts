@@ -2,7 +2,5 @@
 // Part of Phase 5 (Explore) of the GenAI Observatory
 
 export { EventsTimeline } from "./events-timeline";
-
-// Future components:
-// export { RelatedEntities } from "./related-entities";
-// export { EntityGraph } from "./entity-graph";
+export { RelatedEntities } from "./related-entities";
+// export { EntityGraph } from "./entity-graph";  // Coming in Task 8

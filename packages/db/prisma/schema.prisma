@@ -1,28 +1,16 @@
-// ============================================================================
-// GenAI2 - Database Schema
-// ============================================================================
-// This is a placeholder schema. Full schema will be implemented in Phase 1.
-// See plan for complete data model with Evidence, Event, Entity layers.
-
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ============================================================================
-// ENUMS
-// ============================================================================
-
 enum TrustTier {
   AUTHORITATIVE // Official announcements, press releases
   STANDARD // Quality journalism, established sources
   LOW // Aggregators, social media, user-generated
 }
-
 enum SourceType {
   HN
   GITHUB
@@ -36,7 +24,6 @@ enum SourceType {
   YOUTUBE
   LOBSTERS
 }
-
 enum EventStatus {
   RAW // Just created from source
   ENRICHED // GM processed (has artifacts)
@@ -45,20 +32,17 @@ enum EventStatus {
   QUARANTINED // Flagged for review
   BLOCKED // Rejected (spam, duplicate, irrelevant)
 }
-
 enum ImpactLevel {
   BREAKING // Major announcement, funding, launch
   HIGH // Significant development
   MEDIUM // Notable but not urgent
   LOW // Background noise, minor update
 }
-
 enum EvidenceRole {
   PRIMARY // Main source for this event
   SUPPORTING // Additional confirmation
   CONTEXT // Background information
 }
-
 enum ArtifactType {
   HEADLINE // { en: string, hr: string }
   SUMMARY // { en: string, hr: string, bulletPoints: string[] }
@@ -68,7 +52,6 @@ enum ArtifactType {
   TOPIC_ASSIGN // { topics: Array<{slug, confidence}> }
   RELATIONSHIP_EXTRACT // { relationships: Array<{source, target, type, confidence}> }
 }
-
 enum EntityType {
   COMPANY
   LAB
@@ -79,126 +62,89 @@ enum EntityType {
   DATASET
   BENCHMARK
 }
-
 enum MentionRole {
   SUBJECT // Primary actor
   OBJECT // Thing being acted upon
   MENTIONED // Referenced but not central
 }
-
 enum RelationshipStatus {
   PENDING // Awaiting validation
   APPROVED // Passed safety gate
   QUARANTINED // Needs human review
   REJECTED // Failed safety gate
 }
-
 enum RelationType {
-  // Low risk - single source OK
   RELEASED
   ANNOUNCED
   PUBLISHED
-
-  // Medium risk - prefer 2+ sources
   PARTNERED
   INTEGRATED
   FUNDED
-
-  // High risk - require authoritative OR 2+ sources
   ACQUIRED
   BANNED
   BEATS
   CRITICIZED
 }
-
 enum TopicOrigin {
   MANUAL // Human assigned
   LLM // Model assigned
   RULE // Rule-based
 }
-
-// ============================================================================
-// EVIDENCE LAYER - Immutable record of what we retrieved
-// ============================================================================
-
+enum ArticleStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
 model EvidenceSource {
   id           String    @id @default(cuid())
   rawUrl       String
   canonicalUrl String    @unique
   domain       String
   trustTier    TrustTier @default(STANDARD)
-
   snapshots EvidenceSnapshot[]
-
   createdAt DateTime @default(now())
-
   @@index([canonicalUrl])
   @@index([domain])
   @@map("evidence_sources")
 }
-
 model EvidenceSnapshot {
   id       String @id @default(cuid())
   sourceId String
-
-  // What we saw at this moment
   title       String?
   author      String?
   publishedAt DateTime?
   retrievedAt DateTime  @default(now())
-
-  // Content fingerprint
   contentHash String // SHA-256 of fullText
   fullText    String? @db.Text
-
-  // HTTP metadata
   httpStatus Int?
   headers    Json?
-
   source     EvidenceSource  @relation(fields: [sourceId], references: [id])
   eventLinks EventEvidence[]
-
   @@index([sourceId])
   @@index([contentHash])
   @@index([retrievedAt])
   @@map("evidence_snapshots")
 }
-
-// ============================================================================
-// EVENT LAYER - What happened in the world (append-only state machine)
-// ============================================================================
-
 model Event {
   id          String @id @default(cuid())
   fingerprint String @unique
-
-  // Core event data
   occurredAt DateTime
   title      String
   titleHr    String?
-
-  // Classification
   impactLevel ImpactLevel @default(MEDIUM)
   importance  Float       @default(0)
-
-  // Append-only state machine
   status        EventStatus         @default(RAW)
   statusHistory EventStatusChange[]
-
-  // Relations
   evidence  EventEvidence[]
   artifacts EventArtifact[]
   mentions  EntityMention[]
   topics    EventTopic[]
-
-  // Traceability
   sourceType  SourceType
   sourceId    String
   ingestRunId String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([occurredAt])
   @@index([importance])
   @@index([impactLevel])
@@ -206,7 +152,6 @@ model Event {
   @@index([fingerprint])
   @@map("events")
 }
-
 model EventStatusChange {
   id         String       @id @default(cuid())
   eventId    String
@@ -215,338 +160,244 @@ model EventStatusChange {
   reason     String
   changedAt  DateTime     @default(now())
   changedBy  String?
-
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
   @@index([eventId])
   @@map("event_status_changes")
 }
-
 model EventEvidence {
   id         String       @id @default(cuid())
   eventId    String
   snapshotId String
   role       EvidenceRole @default(PRIMARY)
-
   event    Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
   snapshot EvidenceSnapshot @relation(fields: [snapshotId], references: [id])
-
   @@unique([eventId, snapshotId])
   @@map("event_evidence")
 }
-
-// ============================================================================
-// ARTIFACT LAYER - GM outputs with versioning and typed payloads
-// ============================================================================
-
 model EventArtifact {
   id           String       @id @default(cuid())
   eventId      String
   artifactType ArtifactType
   version      Int          @default(1)
-
-  // Structured payload (validated by Zod at runtime)
   payload Json
-
-  // Provenance
   modelUsed     String
   promptVersion String
   promptHash    String
   inputHash     String
   runId         String
-
   createdAt DateTime @default(now())
-
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
   @@unique([eventId, artifactType, version])
   @@index([eventId])
   @@index([runId])
   @@map("event_artifacts")
 }
-
-// ============================================================================
-// LLM OBSERVABILITY - Cost tracking and replay capability
-// ============================================================================
-
 model LLMRun {
   id String @id @default(cuid())
-
-  // What was called
   provider String
   model    String
-
-  // Usage
   inputTokens  Int
   outputTokens Int
   totalTokens  Int
-
-  // Cost (in USD cents)
   costCents Int
-
-  // Timing
   latencyMs Int
-
-  // Replay capability
   promptHash String
   inputHash  String
-
-  // Context
   processorName String
   eventId       String?
-
   createdAt DateTime @default(now())
-
   @@index([createdAt])
   @@index([eventId])
   @@index([processorName])
   @@map("llm_runs")
 }
-
-// ============================================================================
-// ENTITY LAYER - Companies, models, products, people
-// ============================================================================
-
 model Entity {
   id String @id @default(cuid())
-
   name   String
   nameHr String?
   slug   String     @unique
   type   EntityType
-
   description   String? @db.Text
   descriptionHr String? @db.Text
-
   aliases    EntityAlias[]
   importance Float         @default(0)
-
   firstSeen DateTime @default(now())
   lastSeen  DateTime @default(now())
-
   mentions   EntityMention[]
   sourceRels Relationship[]  @relation("source")
   targetRels Relationship[]  @relation("target")
-
   @@unique([name, type])
   @@index([type])
   @@index([importance])
   @@index([slug])
   @@map("entities")
 }
-
 model EntityAlias {
   id       String @id @default(cuid())
   entityId String
   alias    String
-
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
   @@unique([entityId, alias])
   @@index([alias])
   @@map("entity_aliases")
 }
-
 model EntityMention {
   id         String      @id @default(cuid())
   eventId    String
   entityId   String
   role       MentionRole @default(MENTIONED)
   confidence Float       @default(1.0)
-
   event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   entity Entity @relation(fields: [entityId], references: [id])
-
   @@unique([eventId, entityId])
   @@map("entity_mentions")
 }
-
-// ============================================================================
-// RELATIONSHIP LAYER - Edges between entities (with safety gates)
-// ============================================================================
-
 model Relationship {
   id String @id @default(cuid())
-
   sourceId String
   targetId String
   type     RelationType
-
   eventId String
-
   status          RelationshipStatus @default(PENDING)
   statusReason    String?
   modelConfidence Float?
-
   occurredAt  DateTime
   createdAt   DateTime  @default(now())
   validatedAt DateTime?
-
   source Entity @relation("source", fields: [sourceId], references: [id])
   target Entity @relation("target", fields: [targetId], references: [id])
-
   @@index([sourceId])
   @@index([targetId])
   @@index([type])
   @@index([status])
   @@map("relationships")
 }
-
-// ============================================================================
-// TOPIC LAYER - Hierarchical taxonomy
-// ============================================================================
-
 model Topic {
   id String @id @default(cuid())
-
   name        String  @unique
   nameHr      String
   slug        String  @unique
   description String?
-
-  // Hierarchy
   parentId String?
   parent   Topic?  @relation("hierarchy", fields: [parentId], references: [id])
   children Topic[] @relation("hierarchy")
-
-  // Display
   color     String?
   icon      String?
   sortOrder Int     @default(0)
-
   events  EventTopic[]
   aliases TopicAlias[]
-
   @@map("topics")
 }
-
 model TopicAlias {
   id      String @id @default(cuid())
   topicId String
   alias   String
-
   topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
   @@unique([alias])
   @@map("topic_aliases")
 }
-
 model EventTopic {
   id         String      @id @default(cuid())
   eventId    String
   topicId    String
   confidence Float       @default(1.0)
   origin     TopicOrigin @default(LLM)
-
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   topic Topic @relation(fields: [topicId], references: [id])
-
   @@unique([eventId, topicId])
   @@map("event_topics")
 }
-
-// ============================================================================
-// SESSION & WATCHLIST LAYER - Server-side, HttpOnly cookie
-// ============================================================================
-
 model AnonSession {
   id    String @id @default(cuid())
   token String @unique @default(cuid())
-
   lastSeenAt      DateTime @default(now())
   lastEventCursor String?
   preferences     Json     @default("{}")
-
   watchlists Watchlist[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([token])
   @@map("anon_sessions")
 }
-
 model Watchlist {
   id        String @id @default(cuid())
   sessionId String
   name      String
-
   entities WatchlistEntity[]
   topics   WatchlistTopic[]
   keywords String[]
-
   lastNotifiedAt DateTime?
-
   session AnonSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   matches WatchlistMatch[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@map("watchlists")
 }
-
 model WatchlistEntity {
   id          String    @id @default(cuid())
   watchlistId String
   entityId    String
   watchlist   Watchlist @relation(fields: [watchlistId], references: [id])
-
   @@unique([watchlistId, entityId])
   @@map("watchlist_entities")
 }
-
 model WatchlistTopic {
   id          String    @id @default(cuid())
   watchlistId String
   topicId     String
   watchlist   Watchlist @relation(fields: [watchlistId], references: [id])
-
   @@unique([watchlistId, topicId])
   @@map("watchlist_topics")
 }
-
 model WatchlistMatch {
   id          String   @id @default(cuid())
   watchlistId String
   eventId     String
   matchedAt   DateTime @default(now())
   seen        Boolean  @default(false)
-
   watchlist Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
-
   @@unique([watchlistId, eventId])
   @@index([watchlistId, seen])
   @@map("watchlist_matches")
 }
-
-// ============================================================================
-// DAILY BRIEFING - GM-generated daily summaries
-// ============================================================================
-// Rationale: Provides ritual daily briefing with top events and GM commentary.
-// Backward compatibility: New table, no existing data affected.
-
+/// Rationale: store long-form library articles for GenAI.hr migration and curated analysis content.
+/// Backward compatibility: additive table; existing data and queries remain unchanged.
+model Article {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  title         String
+  titleHr       String?
+  summary       String?       @db.Text
+  summaryHr     String?       @db.Text
+  content       String        @db.Text
+  contentHr     String?       @db.Text
+  coverImageUrl String?
+  sourceUrl     String?
+  author        String?
+  tags          String[]      @default([])
+  status        ArticleStatus @default(DRAFT)
+  publishedAt   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@index([publishedAt])
+  @@map("articles")
+}
 model DailyBriefing {
   id          String   @id @default(cuid())
   date        DateTime @unique @db.Date
   generatedAt DateTime @default(now())
-
   items   DailyBriefingItem[]
   payload Json // { changedSince, prediction, action, gmNote } - validated by Zod
-
   runId String // Links to LLMRun for cost tracking
-
   @@map("daily_briefings")
 }
-
 model DailyBriefingItem {
   id         String @id @default(cuid())
   briefingId String
   eventId    String
   rank       Int // 1-5 for top events
-
   briefing DailyBriefing @relation(fields: [briefingId], references: [id], onDelete: Cascade)
-
   @@unique([briefingId, eventId])
   @@index([briefingId])
   @@map("daily_briefing_items")

@@ -40,7 +40,8 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      # Empty string = use relative paths (/trpc), Caddy proxies to API
+      NEXT_PUBLIC_API_URL: ""
     depends_on:
       api:
         condition: service_healthy
@@ -56,6 +57,7 @@ services:
       NODE_ENV: production
       HOST: "0.0.0.0"
       PORT: "4000"
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
       DATABASE_URL: postgresql://${POSTGRES_USER:-genai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-genai}
       REDIS_URL: redis://redis:6379
     depends_on:

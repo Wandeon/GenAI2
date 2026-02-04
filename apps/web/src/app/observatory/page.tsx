@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
+import { Suspense, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
@@ -12,7 +12,24 @@ import { useSwipe } from "@/hooks";
 
 const lanes: LaneId[] = ["hn", "github", "arxiv"];
 
+// Wrapper component with Suspense boundary for useSearchParams
 export default function ObservatoryPage() {
+  return (
+    <Suspense fallback={<ObservatoryLoading />}>
+      <ObservatoryContent />
+    </Suspense>
+  );
+}
+
+function ObservatoryLoading() {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="animate-pulse text-muted-foreground">Učitavanje...</div>
+    </div>
+  );
+}
+
+function ObservatoryContent() {
   const { selectedEvent, selectEvent } = useSelection();
   const { beforeTime, isInPast, setCatchUpCount, startCatchUp } = useTime();
   const { activeLane, setActiveLane } = useMobileLane();

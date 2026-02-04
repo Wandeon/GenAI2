@@ -17,8 +17,14 @@ interface TimeContextValue {
   // Computed timestamp from scrubber
   targetTimestamp: Date;
 
+  // beforeTime for database queries (null = now, no filter needed)
+  beforeTime: Date | null;
+
   // Time range (7 days)
   rangeMs: number;
+
+  // Is at live/now position?
+  isLive: boolean;
 
   // Is viewing the past?
   isInPast: boolean;
@@ -51,6 +57,13 @@ export function TimeProvider({ children }: { children: ReactNode }) {
     return new Date(now - offset);
   }, [scrubberValue]);
 
+  // beforeTime for database queries - null when at "now" (no filter needed)
+  const beforeTime = useMemo(() => {
+    if (scrubberValue >= 100) return null;
+    return targetTimestamp;
+  }, [scrubberValue, targetTimestamp]);
+
+  const isLive = scrubberValue >= 100;
   const isInPast = scrubberValue < 100;
 
   const stepBack = useCallback(() => {
@@ -78,7 +91,9 @@ export function TimeProvider({ children }: { children: ReactNode }) {
       scrubberValue,
       setScrubberValue,
       targetTimestamp,
+      beforeTime,
       rangeMs: RANGE_MS,
+      isLive,
       isInPast,
       catchUpCount,
       setCatchUpCount,
@@ -91,6 +106,8 @@ export function TimeProvider({ children }: { children: ReactNode }) {
     [
       scrubberValue,
       targetTimestamp,
+      beforeTime,
+      isLive,
       isInPast,
       catchUpCount,
       stepBack,

@@ -13,7 +13,7 @@ const lanes: LaneId[] = ["hn", "github", "arxiv"];
 
 export default function ObservatoryPage() {
   const { selectedEvent, selectEvent } = useSelection();
-  const { targetTimestamp, isInPast, setCatchUpCount } = useTime();
+  const { beforeTime, isInPast, setCatchUpCount, isLive } = useTime();
   const { activeLane, setActiveLane } = useMobileLane();
 
   const currentIndex = lanes.indexOf(activeLane);
@@ -31,29 +31,28 @@ export default function ObservatoryPage() {
     },
   });
 
-  // Query all events (without time filter) for catch-up count calculation
+  // Query events with database-side time filtering
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 100,
+    beforeTime: beforeTime ?? undefined,
   });
 
-  const allEvents = eventsData?.items ?? [];
+  const events = eventsData?.items ?? [];
 
-  // Filter events locally based on targetTimestamp when viewing the past
-  const events = useMemo(() => {
-    if (!isInPast) return allEvents;
-    return allEvents.filter((e) => new Date(e.occurredAt) <= targetTimestamp);
-  }, [allEvents, isInPast, targetTimestamp]);
-
-  // Calculate and update catch-up count (events that occurred after targetTimestamp)
-  const catchUpCount = useMemo(() => {
-    if (!isInPast) return 0;
-    return allEvents.filter((e) => new Date(e.occurredAt) > targetTimestamp).length;
-  }, [allEvents, isInPast, targetTimestamp]);
+  // Query catch-up count when viewing the past
+  const { data: countData } = trpc.events.countSince.useQuery(
+    { since: beforeTime! },
+    { enabled: isInPast && !!beforeTime }
+  );
 
   // Update context with catch-up count
   useEffect(() => {
-    setCatchUpCount(catchUpCount);
-  }, [catchUpCount, setCatchUpCount]);
+    if (isInPast && countData) {
+      setCatchUpCount(countData.count);
+    } else {
+      setCatchUpCount(0);
+    }
+  }, [isInPast, countData, setCatchUpCount]);
 
   // Split by source type
   const hnEvents = useMemo(

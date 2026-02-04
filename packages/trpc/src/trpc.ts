@@ -1,15 +1,18 @@
 import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { prisma, type PrismaClient } from "@genai/db";
 
-// Context type - will be expanded with session, db, etc.
+// Context type with database client
 export interface Context {
-  // Placeholder - add session, db client, etc.
+  db: PrismaClient;
 }
 
 // Create context for each request
 export function createTRPCContext(): Context {
-  return {};
+  return {
+    db: prisma,
+  };
 }
 
 const t = initTRPC.context<Context>().create({

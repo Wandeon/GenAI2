@@ -15,6 +15,7 @@
     "@genai/db": "workspace:*",
     "@genai/llm": "workspace:*",
     "@genai/shared": "workspace:*",
+    "@genai/trpc": "workspace:*",
     "bullmq": "^5.34.0",
     "ioredis": "^5.4.2",
     "tsx": "^4.19.2"

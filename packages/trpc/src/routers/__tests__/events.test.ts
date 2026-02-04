@@ -1,6 +1,7 @@
 // packages/trpc/src/routers/__tests__/events.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTRPCContext } from "../../trpc";
+import { createCallerFactory, createTRPCContext } from "../../trpc";
+import { eventsRouter } from "../events";
 
 // Mock Prisma
 vi.mock("@genai/db", () => ({
@@ -15,6 +16,9 @@ vi.mock("@genai/db", () => ({
 }));
 
 import { prisma } from "@genai/db";
+
+// Create a tRPC caller for the events router
+const createCaller = createCallerFactory(eventsRouter);
 
 describe("events router (database-backed)", () => {
   beforeEach(() => {
@@ -352,6 +356,54 @@ describe("events router (database-backed)", () => {
       expect(normalized.headline).toBe("Headline");
       expect(normalized.summary).toBe("Summary");
       expect(normalized.gmTake).toBe("Hot take");
+    });
+  });
+
+  describe("byEntity", () => {
+    it("returns events mentioning entity", async () => {
+      const mockEvents = [
+        {
+          id: "evt_1",
+          title: "OpenAI releases GPT-5",
+          titleHr: null,
+          occurredAt: new Date(),
+          status: "PUBLISHED",
+          artifacts: [],
+          mentions: [{ entity: { id: "ent_1", name: "OpenAI" } }],
+        },
+      ];
+
+      vi.mocked(prisma.event.findMany).mockResolvedValue(mockEvents as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.byEntity({ entityId: "ent_1" });
+
+      expect(prisma.event.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "PUBLISHED",
+            mentions: { some: { entityId: "ent_1" } },
+          }),
+        })
+      );
+      expect(result.items).toHaveLength(1);
+    });
+
+    it("filters by mention role", async () => {
+      vi.mocked(prisma.event.findMany).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      await caller.byEntity({ entityId: "ent_1", role: "SUBJECT" });
+
+      expect(prisma.event.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            mentions: { some: { entityId: "ent_1", role: "SUBJECT" } },
+          }),
+        })
+      );
     });
   });
 });

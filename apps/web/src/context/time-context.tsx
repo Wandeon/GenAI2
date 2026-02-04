@@ -33,6 +33,12 @@ interface TimeContextValue {
   catchUpCount: number;
   setCatchUpCount: (count: number) => void;
 
+  // Catch-up mode (from Daily Run)
+  isCatchUpMode: boolean;
+  catchUpStartDate: Date | null;
+  startCatchUp: (fromDate: Date) => void; // Jump to a date and enable catch-up mode
+  exitCatchUp: () => void; // Exit catch-up mode
+
   // Step functions for keyboard nav
   stepBack: () => void; // 1 hour back
   stepForward: () => void; // 1 hour forward
@@ -50,6 +56,8 @@ const DAY_STEP = (1 / 7) * 100; // 1 day as percentage of 7 days (~14.29%)
 export function TimeProvider({ children }: { children: ReactNode }) {
   const [scrubberValue, setScrubberValue] = useState(100);
   const [catchUpCount, setCatchUpCount] = useState(0);
+  const [isCatchUpMode, setIsCatchUpMode] = useState(false);
+  const [catchUpStartDate, setCatchUpStartDate] = useState<Date | null>(null);
 
   const targetTimestamp = useMemo(() => {
     const now = Date.now();
@@ -84,6 +92,30 @@ export function TimeProvider({ children }: { children: ReactNode }) {
 
   const jumpToNow = useCallback(() => {
     setScrubberValue(100);
+    setIsCatchUpMode(false);
+    setCatchUpStartDate(null);
+  }, []);
+
+  // Start catch-up from a specific date
+  const startCatchUp = useCallback((fromDate: Date) => {
+    const now = Date.now();
+    const targetMs = fromDate.getTime();
+    const offsetMs = now - targetMs;
+
+    // Calculate scrubber value (100 = now, 0 = 7 days ago)
+    // offsetMs / RANGE_MS gives us the fraction of the range
+    // 1 - that gives us the scrubber position from the right
+    const scrubberPos = Math.max(0, Math.min(100, 100 * (1 - offsetMs / RANGE_MS)));
+
+    setScrubberValue(scrubberPos);
+    setIsCatchUpMode(true);
+    setCatchUpStartDate(fromDate);
+  }, []);
+
+  // Exit catch-up mode
+  const exitCatchUp = useCallback(() => {
+    setIsCatchUpMode(false);
+    setCatchUpStartDate(null);
   }, []);
 
   const value = useMemo(
@@ -97,6 +129,10 @@ export function TimeProvider({ children }: { children: ReactNode }) {
       isInPast,
       catchUpCount,
       setCatchUpCount,
+      isCatchUpMode,
+      catchUpStartDate,
+      startCatchUp,
+      exitCatchUp,
       stepBack,
       stepForward,
       dayBack,
@@ -110,6 +146,10 @@ export function TimeProvider({ children }: { children: ReactNode }) {
       isLive,
       isInPast,
       catchUpCount,
+      isCatchUpMode,
+      catchUpStartDate,
+      startCatchUp,
+      exitCatchUp,
       stepBack,
       stepForward,
       dayBack,

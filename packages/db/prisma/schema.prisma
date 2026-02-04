@@ -519,3 +519,35 @@ model WatchlistMatch {
   @@index([watchlistId, seen])
   @@map("watchlist_matches")
 }
+
+// ============================================================================
+// DAILY BRIEFING - GM-generated daily summaries
+// ============================================================================
+// Rationale: Provides ritual daily briefing with top events and GM commentary.
+// Backward compatibility: New table, no existing data affected.
+
+model DailyBriefing {
+  id          String   @id @default(cuid())
+  date        DateTime @unique @db.Date
+  generatedAt DateTime @default(now())
+
+  items   DailyBriefingItem[]
+  payload Json // { changedSince, prediction, action, gmNote } - validated by Zod
+
+  runId String // Links to LLMRun for cost tracking
+
+  @@map("daily_briefings")
+}
+
+model DailyBriefingItem {
+  id         String @id @default(cuid())
+  briefingId String
+  eventId    String
+  rank       Int // 1-5 for top events
+
+  briefing DailyBriefing @relation(fields: [briefingId], references: [id], onDelete: Cascade)
+
+  @@unique([briefingId, eventId])
+  @@index([briefingId])
+  @@map("daily_briefing_items")
+}

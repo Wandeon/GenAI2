@@ -35,7 +35,7 @@ export function Header({
   searchQuery,
   onSearchChange,
 }: HeaderProps) {
-  const { scrubberValue, setScrubberValue, catchUpCount, isInPast, targetTimestamp, jumpToNow } = useTime();
+  const { scrubberValue, setScrubberValue, catchUpCount, isInPast, targetTimestamp, jumpToNow, isCatchUpMode, exitCatchUp } = useTime();
 
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -242,6 +242,12 @@ export function Header({
             value={scrubberValue}
             onChange={setScrubberValue}
             catchUpCount={catchUpCount}
+            isCatchUpMode={isCatchUpMode}
+            onExitCatchUp={exitCatchUp}
+            onCatchUpPlay={() => {
+              // Jump to now position to "play through" all events
+              jumpToNow();
+            }}
           />
         </div>
       </div>

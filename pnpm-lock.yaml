@@ -158,6 +158,9 @@ importers:
       '@genai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@genai/trpc':
+        specifier: workspace:*
+        version: link:../../packages/trpc
       bullmq:
         specifier: ^5.34.0
         version: 5.67.2

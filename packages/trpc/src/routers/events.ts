@@ -242,4 +242,73 @@ export const eventsRouter = router({
 
       return { count };
     }),
+
+  // Get events mentioning a specific entity (for entity dossier pages)
+  // Returns normalized events with mentions data for showing which entities
+  // are referenced in each event. Uses same transformation as list() for
+  // API consistency, but adds mentions array for dossier page requirements.
+  byEntity: publicProcedure
+    .input(
+      z.object({
+        entityId: z.string(),
+        role: z.enum(["SUBJECT", "OBJECT", "MENTIONED"]).optional(),
+        limit: z.number().min(1).max(100).default(20),
+        cursor: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const events = await ctx.db.event.findMany({
+        where: {
+          status: "PUBLISHED",
+          mentions: {
+            some: {
+              entityId: input.entityId,
+              ...(input.role && { role: input.role }),
+            },
+          },
+        },
+        include: {
+          evidence: {
+            take: 1,
+            include: {
+              snapshot: {
+                include: { source: true },
+              },
+            },
+          },
+          topics: {
+            include: { topic: true },
+          },
+          artifacts: {
+            where: { artifactType: { in: ["HEADLINE", "SUMMARY", "GM_TAKE"] } },
+          },
+          mentions: {
+            include: { entity: true },
+            take: 5,
+          },
+        },
+        orderBy: { occurredAt: "desc" },
+        take: input.limit + 1,
+        ...(input.cursor && { cursor: { id: input.cursor }, skip: 1 }),
+      });
+
+      let nextCursor: string | null = null;
+      if (events.length > input.limit) {
+        const nextItem = events.pop();
+        nextCursor = nextItem?.id ?? null;
+      }
+
+      return {
+        items: events.map((event) => ({
+          ...toNormalizedEvent(event),
+          mentions: event.mentions.map((m) => ({
+            id: m.entity.id,
+            name: m.entity.name,
+            type: m.entity.type,
+            role: m.role,
+          })),
+        })),
+        nextCursor,
+      };
+    }),
 });

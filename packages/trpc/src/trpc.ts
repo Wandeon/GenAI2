@@ -3,15 +3,22 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 import { prisma, type PrismaClient } from "@genai/db";
 
-// Context type with database client
+// Context type with database client and optional session
 export interface Context {
   db: PrismaClient;
+  sessionId?: string;
+}
+
+// Options for creating context
+export interface CreateContextOptions {
+  sessionId?: string;
 }
 
 // Create context for each request
-export function createTRPCContext(): Context {
+export function createTRPCContext(opts?: CreateContextOptions): Context {
   return {
     db: prisma,
+    sessionId: opts?.sessionId,
   };
 }
 

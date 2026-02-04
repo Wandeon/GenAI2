@@ -19,6 +19,7 @@ import { createEntityExtractWorker } from "./processors/entity-extract";
 import { createTopicAssignWorker } from "./processors/topic-assign";
 import { createRelationshipExtractWorker } from "./processors/relationship-extract";
 import { createWatchlistMatchWorker } from "./processors/watchlist-match";
+import { createDailyBriefingWorker } from "./processors/daily-briefing";
 
 // Import job types for type safety
 import type { EvidenceSnapshotJob } from "./processors/evidence-snapshot";
@@ -28,6 +29,7 @@ import type { EntityExtractJob, EntityExtractResult } from "./processors/entity-
 import type { TopicAssignJob, TopicAssignResult } from "./processors/topic-assign";
 import type { RelationshipExtractJob, RelationshipExtractResult } from "./processors/relationship-extract";
 import type { WatchlistMatchJob } from "./processors/watchlist-match";
+import type { DailyBriefingJob } from "./processors/daily-briefing";
 
 // ============================================================================
 // LOGGING
@@ -61,6 +63,7 @@ export const queues = {
   topicAssign: new Queue<TopicAssignJob>("topic-assign", { connection }),
   relationshipExtract: new Queue<RelationshipExtractJob>("relationship-extract", { connection }),
   watchlistMatch: new Queue<WatchlistMatchJob>("watchlist-match", { connection }),
+  dailyBriefing: new Queue<DailyBriefingJob>("daily-briefing", { connection }),
 } as const;
 
 // ============================================================================
@@ -173,6 +176,13 @@ watchlistMatchWorker.on("completed", async (job: Job<WatchlistMatchJob>) => {
   log(`watchlist-match completed for ${job.data.eventId} - pipeline complete`);
 });
 workers.push(watchlistMatchWorker);
+
+// 8. Daily Briefing Worker - standalone, triggered by cron at 06:00 CET
+const dailyBriefingWorker = createDailyBriefingWorker(connection);
+dailyBriefingWorker.on("completed", async (job: Job<DailyBriefingJob>) => {
+  log(`daily-briefing completed for ${job.data.date}`);
+});
+workers.push(dailyBriefingWorker);
 
 // ============================================================================
 // ERROR HANDLING

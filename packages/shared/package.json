@@ -16,6 +16,10 @@
       "types": "./src/schemas/artifacts.ts",
       "default": "./src/schemas/artifacts.ts"
     },
+    "./schemas/daily-briefing": {
+      "types": "./src/schemas/daily-briefing.ts",
+      "default": "./src/schemas/daily-briefing.ts"
+    },
     "./graph-safety": {
       "types": "./src/graph-safety.ts",
       "default": "./src/graph-safety.ts"

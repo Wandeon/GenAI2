@@ -29,7 +29,7 @@ The "holy crap" moment happens in Week 2, not Week 10.
 | 1     | Data Foundation        | 2 weeks   | **Complete** ✅  |
 | 2     | Event Pipeline         | 2 weeks   | **Complete** ✅  |
 | 3     | Observatory Production | 2 weeks   | **Complete** ✅  |
-| 4     | Daily Run              | 1.5 weeks | Planned         |
+| 4     | Daily Run              | 1.5 weeks | **Complete** ✅  |
 | 5     | Explore                | 2 weeks   | Planned         |
 | 6     | Personalization        | 1.5 weeks | Planned         |
 | 7     | Library + Migration    | 2 weeks   | Planned         |
@@ -294,19 +294,84 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 ---
 
-## Phase 4: Daily Run
+## Phase 4: Daily Run ✅ COMPLETE
 
 **Owner:** Worker / Web
 
-* [ ] DailyBriefing model + processor
-* [ ] Daily Run page
-* [ ] Source disclosure
-* [ ] Catch-up integration
-* [ ] Cursor tracking
+**Goal:** Build ritual daily briefing with GM commentary, catch-up integration, and session-based cursor tracking
 
-**Gate:**
+### Sprint 4.1 – DailyBriefing Schema ✅ DONE
 
-* Returning after 3 days shows correct catch-up
+* [x] DailyBriefing model (date, payload, runId)
+* [x] DailyBriefingItem model (eventId, rank)
+* [x] Migration created
+
+### Sprint 4.2 – DailyBriefingPayload Schema ✅ DONE
+
+* [x] Zod schema for GM-generated content
+* [x] changedSince (en, hr, highlights)
+* [x] prediction (en, hr, confidence, caveats)
+* [x] action, gmNote (optional bilingual)
+* [x] eventCount, sourceCount, topEntities
+
+### Sprint 4.3 – Daily Briefing Processor ✅ DONE
+
+* [x] Fetches top events for the day
+* [x] Generates GM briefing via LLM
+* [x] Creates briefing with ranked items
+* [x] LLM cost tracking
+* [x] 22 tests passing
+
+### Sprint 4.4 – DailyBriefings tRPC Router ✅ DONE
+
+* [x] today - Get current day's briefing
+* [x] byDate - Get briefing for specific date
+* [x] list - List recent briefings
+* [x] byIdWithEvents - Full briefing with event details
+* [x] 12 tests passing
+
+### Sprint 4.5 – Session Middleware ✅ DONE
+
+* [x] HttpOnly cookie sessions (Architecture Constitution #5)
+* [x] Database-backed session validation
+* [x] getOrCreateSession function
+* [x] getSession read-only helper
+* [x] clearSession with optional DB delete
+* [x] tRPC context includes sessionId
+
+### Sprint 4.6 – Sessions tRPC Router ✅ DONE
+
+* [x] get - Session with watchlists
+* [x] updateCursor - Track last seen event
+* [x] getCatchUp - Events since last visit
+* [x] updatePreferences - Server-side preferences
+* [x] markSeen - Update activity timestamp
+* [x] 11 tests passing
+
+### Sprint 4.7 – Daily Run Page ✅ DONE
+
+* [x] Fetch today's briefing from tRPC
+* [x] Top 5 events with summaries and entities
+* [x] "Što se promijenilo" section
+* [x] "GM Prognoza" section with confidence
+* [x] Source disclosure (events, sources, top entities)
+* [x] Catch-up button with real count
+* [x] Loading and empty states
+* [x] Croatian localization
+
+### Sprint 4.8 – Catch-up Integration ✅ DONE
+
+* [x] TimeContext catch-up mode (startCatchUp, exitCatchUp)
+* [x] Handle ?catchUp= query parameter in Observatory
+* [x] TimeMachine catch-up mode indicator
+* [x] Exit catch-up button
+* [x] Seamless Daily Run → Observatory flow
+
+**Gate:** ✅ PASSED
+
+* [x] Returning after 3 days shows correct catch-up count
+* [x] Session persists via HttpOnly cookie
+* [x] Source disclosure visible on Daily Run
 
 ---
 
@@ -314,15 +379,63 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 **Owner:** Web / API
 
-* [ ] Entity search
-* [ ] Dossier page
-* [ ] Recent events
-* [ ] Related entities
-* [ ] Graph tab
-* [ ] Filters
-* [ ] Mobile dossier
+**Goal:** Entity dossier-first exploration with optional relationship graph
 
-**Gate:** Search → dossier → events works
+### Sprint 5.1 – Entity Search
+
+* [ ] Fuzzy search with alias matching ("anthorpic" → Anthropic)
+* [ ] Search suggestions dropdown
+* [ ] Recent searches (session-based)
+* [ ] Search tRPC router enhancements
+
+### Sprint 5.2 – Entity Dossier Page
+
+* [ ] `/explore/[slug]` route
+* [ ] Entity header (name, type, description)
+* [ ] Bilingual support (en/hr)
+* [ ] Entity aliases display
+
+### Sprint 5.3 – Recent Events for Entity
+
+* [ ] Events timeline component
+* [ ] Query events where entity is mentioned
+* [ ] Role filter (SUBJECT, OBJECT, MENTIONED)
+* [ ] Pagination/infinite scroll
+
+### Sprint 5.4 – Related Entities
+
+* [ ] Top 10 connected entities list
+* [ ] Connection count badge
+* [ ] Relationship type breakdown
+* [ ] Click → navigate to dossier
+
+### Sprint 5.5 – Graph View (Optional Tab)
+
+* [ ] Force-directed graph component
+* [ ] Entity nodes with type colors
+* [ ] Relationship edges with labels
+* [ ] Zoom and pan controls
+
+### Sprint 5.6 – Graph Filters
+
+* [ ] Filter by entity type
+* [ ] Filter by relationship type
+* [ ] Time range filter
+* [ ] Node count limit
+
+### Sprint 5.7 – Mobile Dossier
+
+* [ ] Responsive layout for 375px
+* [ ] Collapsible sections
+* [ ] Touch-friendly graph (or hide on mobile)
+* [ ] Swipe navigation
+
+**Gate:**
+
+* [ ] Search "OpenAI" → dossier page renders
+* [ ] Recent events show for entity
+* [ ] Related entities clickable
+* [ ] Works on 375px mobile
 
 ---
 

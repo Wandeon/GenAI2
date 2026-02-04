@@ -5,6 +5,7 @@ import { topicsRouter } from "./routers/topics";
 import { searchRouter } from "./routers/search";
 import { llmRunsRouter } from "./routers/llm-runs";
 import { dailyBriefingsRouter } from "./routers/daily-briefings";
+import { sessionsRouter } from "./routers/sessions";
 
 export const appRouter = router({
   events: eventsRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   search: searchRouter,
   llmRuns: llmRunsRouter,
   dailyBriefings: dailyBriefingsRouter,
+  sessions: sessionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

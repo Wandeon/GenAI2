@@ -3,4 +3,4 @@
 
 export { EventsTimeline } from "./events-timeline";
 export { RelatedEntities } from "./related-entities";
-// export { EntityGraph } from "./entity-graph";  // Coming in Task 8
+export { EntityGraph } from "./entity-graph";

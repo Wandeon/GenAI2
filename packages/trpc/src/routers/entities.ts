@@ -148,4 +148,48 @@ export const entitiesRouter = router({
 
       return sorted;
     }),
+
+  // Get graph data for entity connections visualization
+  graphData: publicProcedure
+    .input(
+      z.object({
+        entityId: z.string(),
+        maxNodes: z.number().min(10).max(100).default(30),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const relationships = await ctx.db.relationship.findMany({
+        where: {
+          OR: [{ sourceId: input.entityId }, { targetId: input.entityId }],
+          status: "APPROVED",
+        },
+        include: {
+          source: true,
+          target: true,
+        },
+        take: input.maxNodes,
+      });
+
+      const nodesMap = new Map<string, (typeof relationships)[0]["source"]>();
+      const links: Array<{ source: string; target: string; type: string }> = [];
+
+      for (const rel of relationships) {
+        nodesMap.set(rel.sourceId, rel.source);
+        nodesMap.set(rel.targetId, rel.target);
+        links.push({
+          source: rel.sourceId,
+          target: rel.targetId,
+          type: rel.type,
+        });
+      }
+
+      const nodes = [...nodesMap.values()].map((e) => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        slug: e.slug,
+      }));
+
+      return { nodes, links };
+    }),
 });

@@ -21,6 +21,8 @@ export interface EvidenceSnapshotJob {
   url: string;
   sourceType: string;
   sourceId: string;
+  title?: string;
+  publishedAt?: string; // ISO date string
 }
 
 export interface EvidenceSnapshotInput {
@@ -281,24 +283,29 @@ export async function createEvidenceSnapshot(
  * Process an evidence snapshot job from the queue.
  *
  * @param job - The BullMQ job
+ * @returns The snapshot result for pipeline chaining
  */
 export async function processEvidenceSnapshot(
   job: Job<EvidenceSnapshotJob>
-): Promise<void> {
-  const { url, sourceType, sourceId } = job.data;
+): Promise<EvidenceSnapshotResult> {
+  const { url, sourceType, sourceId, title, publishedAt } = job.data;
 
   log(`Processing evidence snapshot for ${url}`);
 
-  // Create the evidence snapshot
+  // Create the evidence snapshot with title if available
   const result = await createEvidenceSnapshot({
     url,
     sourceType,
     sourceId,
+    title,
+    publishedAt: publishedAt ? new Date(publishedAt) : undefined,
   });
 
   log(
     `Evidence snapshot created: source=${result.sourceId}, snapshot=${result.snapshotId}, isNew=${result.isNewSource}`
   );
+
+  return result;
 }
 
 // ============================================================================

@@ -145,15 +145,14 @@ export async function ingestFeeds(
         const items = await source.fetch();
         log(`Got ${items.length} items from ${source.name}`);
 
-        // Enqueue each item
+        // Enqueue each item with all available metadata
         for (const item of items) {
           await evidenceSnapshotQueue.add("snapshot", {
             url: item.url,
             sourceType: item.sourceType,
             sourceId: item.sourceId,
-            // Additional data that could be passed to the processor
-            // Note: This requires the processor to accept these fields
-            // For now, the processor will fetch content itself
+            title: item.title,
+            publishedAt: item.publishedAt?.toISOString(),
           });
           totalEnqueued++;
         }

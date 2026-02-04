@@ -22,7 +22,7 @@ import { createWatchlistMatchWorker } from "./processors/watchlist-match";
 import { createDailyBriefingWorker } from "./processors/daily-briefing";
 
 // Import job types for type safety
-import type { EvidenceSnapshotJob } from "./processors/evidence-snapshot";
+import type { EvidenceSnapshotJob, EvidenceSnapshotResult } from "./processors/evidence-snapshot";
 import type { EventCreateJob, EventCreateResult } from "./processors/event-create";
 import type { EventEnrichJob, EventEnrichResult } from "./processors/event-enrich";
 import type { EntityExtractJob, EntityExtractResult } from "./processors/entity-extract";
@@ -102,8 +102,22 @@ function markTopicDone(eventId: string): void {
 // Create workers for all processors
 const workers: Worker[] = [];
 
-// 1. Evidence Snapshot Worker
+// 1. Evidence Snapshot Worker - on completion, enqueue event-create
 const evidenceSnapshotWorker = createEvidenceSnapshotWorker(connection);
+evidenceSnapshotWorker.on("completed", async (job: Job<EvidenceSnapshotJob>, result: EvidenceSnapshotResult) => {
+  if (!result?.snapshotId || !job.data.title) {
+    log(`evidence-snapshot completed for ${job.data.url} but missing data, skipping event-create`);
+    return;
+  }
+  log(`evidence-snapshot completed for ${job.data.url}, enqueueing event-create`);
+  await queues.eventCreate.add("create", {
+    snapshotId: result.snapshotId,
+    sourceType: job.data.sourceType,
+    sourceId: job.data.sourceId,
+    title: job.data.title,
+    occurredAt: job.data.publishedAt || new Date().toISOString(),
+  });
+});
 workers.push(evidenceSnapshotWorker);
 
 // 2. Event Create Worker - on completion, enqueue event-enrich

@@ -455,6 +455,91 @@ branch → PR → CI green → merge → auto-deploy → monitor
 
 ---
 
+## Environment Prerequisites
+
+Before starting any database-related work, verify the environment is ready:
+
+```bash
+# Quick environment check
+./scripts/env-check.sh
+
+# Or manually:
+pg_isready -h localhost -p 5432    # Check PostgreSQL
+redis-cli ping                       # Check Redis (should return PONG)
+pnpm db:generate                     # Ensure Prisma client is current
+```
+
+**If database is unavailable:**
+1. Start Docker services: `docker compose up -d postgres redis`
+2. Wait for health: `docker compose ps` (all should be "healthy")
+3. Run pending migrations: `pnpm db:migrate`
+4. Only then proceed with development
+
+**NEVER work around missing infrastructure** - fix it first or notify the user.
+
+---
+
+## Multi-Task Feature Development
+
+For complex features with 3+ tasks, follow this checkpointing approach:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CHUNKED FEATURE DELIVERY                                       │
+│                                                                 │
+│  Each task must be:                                             │
+│  1. Independently verifiable (tests pass)                       │
+│  2. Committable on its own                                      │
+│  3. Complete before moving to next task                         │
+│                                                                 │
+│  After each task:                                               │
+│  □ Run typecheck + tests                                        │
+│  □ Commit with descriptive message                              │
+│  □ Verify no regressions                                        │
+│  □ Only then start next task                                    │
+│                                                                 │
+│  If blocked on a task:                                          │
+│  1. Document the blocker                                        │
+│  2. Create a follow-up task                                     │
+│  3. Do NOT skip to next task                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Task ordering for features:**
+1. Data layer (Prisma schema, migrations)
+2. Validation (Zod schemas)
+3. API layer (tRPC routers)
+4. UI layer (React components)
+5. Integration (wiring, tests)
+
+---
+
+## TypeScript Standards
+
+```typescript
+// ALWAYS: Strict typing, no shortcuts
+interface EventProps {
+  id: string;
+  title: string;
+  occurredAt: Date;
+}
+
+// NEVER: any, unknown without narrowing, loose types
+function process(data: any) { ... }  // ❌ FORBIDDEN
+
+// Zod schemas MUST match Prisma models exactly
+// When adding a field to Prisma, update the corresponding Zod schema
+// When changing a type, verify all usages compile
+```
+
+**Type discipline:**
+- Prefer `interface` for object shapes, `type` for unions/primitives
+- Use `as const` for literal arrays/objects
+- Generic constraints: `T extends Record<string, unknown>` not `T extends object`
+- Import types with `import type` when only used for typing
+
+---
+
 ## Key Commands
 
 ```bash
@@ -466,6 +551,11 @@ pnpm lint             # Lint
 pnpm test             # Run tests
 pnpm db:generate      # Generate Prisma client
 pnpm db:migrate       # Run migrations
+
+# Environment scripts
+./scripts/env-check.sh    # Verify all services running
+./scripts/reset-db.sh     # Reset database (dev only)
+./scripts/full-test.sh    # Build + typecheck + test
 ```
 
 ---

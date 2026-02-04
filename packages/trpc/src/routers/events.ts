@@ -1,37 +1,61 @@
 // packages/trpc/src/routers/events.ts
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
-import { fetchHNTopStories } from "../services/hn-feed";
-import { fetchGitHubTrending } from "../services/github-feed";
-import { fetchArxivPapers } from "../services/arxiv-feed";
 import type { NormalizedEvent } from "@genai/shared";
 
+// Zod schemas for Prisma enums
+const SourceType = z.enum([
+  "HN",
+  "GITHUB",
+  "ARXIV",
+  "NEWSAPI",
+  "REDDIT",
+  "LOBSTERS",
+  "PRODUCTHUNT",
+  "DEVTO",
+  "YOUTUBE",
+  "LEADERBOARD",
+  "HUGGINGFACE",
+]);
 const ImpactLevel = z.enum(["BREAKING", "HIGH", "MEDIUM", "LOW"]);
+const EventStatus = z.enum([
+  "RAW",
+  "ENRICHED",
+  "VERIFIED",
+  "PUBLISHED",
+  "QUARANTINED",
+  "BLOCKED",
+]);
 
-// Cache for feed results (simple in-memory, 5 min TTL)
-let feedCache: { events: NormalizedEvent[]; timestamp: number } | null = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// Transform database event to NormalizedEvent
+function toNormalizedEvent(event: any): NormalizedEvent {
+  // Extract artifacts for quick access
+  const headlineArtifact = event.artifacts?.find(
+    (a: any) => a.artifactType === "HEADLINE"
+  );
+  const summaryArtifact = event.artifacts?.find(
+    (a: any) => a.artifactType === "SUMMARY"
+  );
+  const gmTakeArtifact = event.artifacts?.find(
+    (a: any) => a.artifactType === "GM_TAKE"
+  );
 
-async function getAggregatedEvents(): Promise<NormalizedEvent[]> {
-  const now = Date.now();
-
-  if (feedCache && now - feedCache.timestamp < CACHE_TTL) {
-    return feedCache.events;
-  }
-
-  // Fetch all feeds in parallel
-  const [hnEvents, ghEvents, arxivEvents] = await Promise.all([
-    fetchHNTopStories(30),
-    fetchGitHubTrending(),
-    fetchArxivPapers(),
-  ]);
-
-  // Combine and sort by date
-  const allEvents = [...hnEvents, ...ghEvents, ...arxivEvents];
-  allEvents.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
-
-  feedCache = { events: allEvents, timestamp: now };
-  return allEvents;
+  return {
+    id: event.id,
+    sourceType: event.sourceType,
+    externalId: event.sourceId,
+    url: event.evidence?.[0]?.snapshot?.source?.rawUrl || "",
+    title: event.title,
+    titleHr: event.titleHr || undefined,
+    occurredAt: event.occurredAt,
+    impactLevel: event.impactLevel,
+    sourceCount: event.evidence?.length || 1,
+    topics: event.topics?.map((t: any) => t.topic?.slug || t.topicId) || [],
+    status: event.status,
+    headline: headlineArtifact?.payload?.en,
+    summary: summaryArtifact?.payload?.en,
+    gmTake: gmTakeArtifact?.payload?.take,
+  };
 }
 
 export const eventsRouter = router({
@@ -40,43 +64,131 @@ export const eventsRouter = router({
       z.object({
         cursor: z.string().optional(),
         limit: z.number().min(1).max(100).default(20),
-        sourceType: z.enum(["HN", "GITHUB", "ARXIV"]).optional(),
+        sourceType: SourceType.optional(),
         impactLevel: ImpactLevel.optional(),
         beforeTime: z.date().optional(),
+        status: EventStatus.optional(),
+        topicSlug: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
-      let items = await getAggregatedEvents();
+    .query(async ({ ctx, input }) => {
+      const where: any = {
+        // Default: only show PUBLISHED events
+        status: input.status || "PUBLISHED",
+      };
 
-      // Filter by source type
       if (input.sourceType) {
-        items = items.filter((e) => e.sourceType === input.sourceType);
+        where.sourceType = input.sourceType;
       }
 
-      // Filter by time
-      if (input.beforeTime) {
-        items = items.filter(
-          (e) => e.occurredAt.getTime() <= input.beforeTime!.getTime()
-        );
-      }
-
-      // Filter by impact
       if (input.impactLevel) {
-        items = items.filter((e) => e.impactLevel === input.impactLevel);
+        where.impactLevel = input.impactLevel;
       }
 
-      // Apply limit
-      items = items.slice(0, input.limit);
+      if (input.beforeTime) {
+        where.occurredAt = { lte: input.beforeTime };
+      }
+
+      if (input.topicSlug) {
+        where.topics = {
+          some: {
+            topic: { slug: input.topicSlug },
+          },
+        };
+      }
+
+      const events = await ctx.db.event.findMany({
+        where,
+        include: {
+          evidence: {
+            take: 1,
+            include: {
+              snapshot: {
+                include: { source: true },
+              },
+            },
+          },
+          topics: {
+            include: { topic: true },
+          },
+          artifacts: {
+            where: {
+              artifactType: { in: ["HEADLINE", "SUMMARY", "GM_TAKE"] },
+            },
+          },
+        },
+        orderBy: { occurredAt: "desc" },
+        take: input.limit + 1, // Fetch one extra to determine if there's more
+        ...(input.cursor && {
+          cursor: { id: input.cursor },
+          skip: 1,
+        }),
+      });
+
+      let nextCursor: string | null = null;
+      if (events.length > input.limit) {
+        const nextItem = events.pop();
+        nextCursor = nextItem?.id || null;
+      }
 
       return {
-        items,
-        nextCursor: null as string | null,
+        items: events.map(toNormalizedEvent),
+        nextCursor,
       };
     }),
 
-  byId: publicProcedure.input(z.string()).query(async ({ input }) => {
-    const events = await getAggregatedEvents();
-    return events.find((e) => e.id === input) ?? null;
+  byId: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const event = await ctx.db.event.findUnique({
+      where: { id: input },
+      include: {
+        evidence: {
+          include: {
+            snapshot: {
+              include: { source: true },
+            },
+          },
+        },
+        topics: {
+          include: { topic: true },
+        },
+        artifacts: true,
+        mentions: {
+          include: { entity: true },
+        },
+        statusHistory: {
+          orderBy: { changedAt: "desc" },
+          take: 5,
+        },
+      },
+    });
+
+    if (!event) {
+      return null;
+    }
+
+    return {
+      ...toNormalizedEvent(event),
+      artifacts: event.artifacts.map((a) => ({
+        type: a.artifactType,
+        payload: a.payload,
+        modelUsed: a.modelUsed,
+        version: a.version,
+      })),
+      entities: event.mentions.map((m) => ({
+        id: m.entity.id,
+        name: m.entity.name,
+        type: m.entity.type,
+        role: m.role,
+      })),
+      statusHistory: event.statusHistory,
+      evidence: event.evidence.map((e) => ({
+        id: e.id,
+        url: e.snapshot.source.rawUrl,
+        domain: e.snapshot.source.domain,
+        trustTier: e.snapshot.source.trustTier,
+        retrievedAt: e.snapshot.retrievedAt,
+      })),
+    };
   }),
 
   search: publicProcedure
@@ -86,16 +198,48 @@ export const eventsRouter = router({
         limit: z.number().min(1).max(50).default(10),
       })
     )
-    .query(async ({ input }) => {
-      const events = await getAggregatedEvents();
-      const q = input.query.toLowerCase();
+    .query(async ({ ctx, input }) => {
+      // Use PostgreSQL full-text search
+      const events = await ctx.db.$queryRaw<any[]>`
+        SELECT e.id, e.title, e."titleHr", e."occurredAt", e."impactLevel",
+               e."sourceType", e."sourceId", e.status
+        FROM events e
+        WHERE e.status = 'PUBLISHED'
+          AND e.search_vector @@ plainto_tsquery('english', ${input.query})
+        ORDER BY ts_rank(e.search_vector, plainto_tsquery('english', ${input.query})) DESC
+        LIMIT ${input.limit}
+      `;
 
-      return events
-        .filter(
-          (e) =>
-            e.title.toLowerCase().includes(q) ||
-            e.topics.some((t) => t.toLowerCase().includes(q))
-        )
-        .slice(0, input.limit);
+      return events.map((e) => ({
+        id: e.id,
+        title: e.title,
+        titleHr: e.titleHr,
+        occurredAt: e.occurredAt,
+        impactLevel: e.impactLevel,
+        sourceType: e.sourceType,
+        externalId: e.sourceId,
+        url: "",
+        sourceCount: 1,
+        topics: [],
+        status: e.status,
+      }));
+    }),
+
+  // Count events since a given date (for catch-up calculation)
+  countSince: publicProcedure
+    .input(
+      z.object({
+        since: z.date(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const count = await ctx.db.event.count({
+        where: {
+          status: "PUBLISHED",
+          occurredAt: { gt: input.since },
+        },
+      });
+
+      return { count };
     }),
 });

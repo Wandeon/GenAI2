@@ -1,6 +1,6 @@
 // packages/trpc/src/routers/__tests__/events.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTRPCContext, router, publicProcedure } from "../../trpc";
+import { createTRPCContext } from "../../trpc";
 
 // Mock Prisma
 vi.mock("@genai/db", () => ({
@@ -15,12 +15,6 @@ vi.mock("@genai/db", () => ({
 }));
 
 import { prisma } from "@genai/db";
-
-// Create a test router with database access
-function createTestRouter() {
-  // Import the actual events router dynamically after mocks are set up
-  return import("../events").then((m) => m.eventsRouter);
-}
 
 describe("events router (database-backed)", () => {
   beforeEach(() => {
@@ -159,9 +153,8 @@ describe("events router (database-backed)", () => {
       vi.mocked(prisma.event.findMany).mockResolvedValue(mockEvents as any);
 
       // When limit is 20 and we get 21 results, there's a next page
-      const results = mockEvents.slice(0, 20);
       const hasMore = mockEvents.length > 20;
-      const nextCursor = hasMore ? mockEvents[20].id : null;
+      const nextCursor = hasMore ? mockEvents[20]?.id ?? null : null;
 
       expect(nextCursor).toBe("evt_20");
     });

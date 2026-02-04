@@ -3,7 +3,9 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { appRouter, createTRPCContext } from "@genai/trpc";
+import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import { registerSSE } from "./sse/events";
+import { getOrCreateSession } from "./middleware/session";
 
 const server = Fastify({
   logger: true,
@@ -19,12 +21,16 @@ await server.register(cookie, {
   secret: process.env.COOKIE_SECRET || "development-secret-change-in-production",
 });
 
-// Register tRPC with Prisma context
+// Register tRPC with Prisma context and session
 await server.register(fastifyTRPCPlugin, {
   prefix: "/trpc",
   trpcOptions: {
     router: appRouter,
-    createContext: createTRPCContext,
+    createContext: async ({ req, res }: CreateFastifyContextOptions) => {
+      // Get or create session from HttpOnly cookie
+      const session = await getOrCreateSession(req, res);
+      return createTRPCContext({ sessionId: session.sessionId });
+    },
   },
 });
 

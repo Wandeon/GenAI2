@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
@@ -13,8 +14,24 @@ const lanes: LaneId[] = ["hn", "github", "arxiv"];
 
 export default function ObservatoryPage() {
   const { selectedEvent, selectEvent } = useSelection();
-  const { beforeTime, isInPast, setCatchUpCount, isLive } = useTime();
+  const { beforeTime, isInPast, setCatchUpCount, startCatchUp } = useTime();
   const { activeLane, setActiveLane } = useMobileLane();
+  const searchParams = useSearchParams();
+  const catchUpInitialized = useRef(false);
+
+  // Handle catchUp query parameter from Daily Run
+  useEffect(() => {
+    if (catchUpInitialized.current) return;
+
+    const catchUpParam = searchParams.get("catchUp");
+    if (catchUpParam) {
+      const catchUpDate = new Date(catchUpParam);
+      if (!isNaN(catchUpDate.getTime())) {
+        startCatchUp(catchUpDate);
+        catchUpInitialized.current = true;
+      }
+    }
+  }, [searchParams, startCatchUp]);
 
   const currentIndex = lanes.indexOf(activeLane);
 

@@ -25,6 +25,12 @@ interface TimeMachineProps {
   rangeMs?: number;
   /** Number of events that would be "played" to catch up */
   catchUpCount?: number;
+  /** Whether we're in catch-up mode (from Daily Run) */
+  isCatchUpMode?: boolean;
+  /** Called when user clicks the catch-up play button */
+  onCatchUpPlay?: () => void;
+  /** Called when user exits catch-up mode */
+  onExitCatchUp?: () => void;
 }
 
 export function TimeMachine({
@@ -32,6 +38,9 @@ export function TimeMachine({
   onChange,
   rangeMs = 7 * 24 * 60 * 60 * 1000, // 7 days
   catchUpCount = 0,
+  isCatchUpMode = false,
+  onCatchUpPlay,
+  onExitCatchUp,
 }: TimeMachineProps) {
   const [localValue, setLocalValue] = useState(value);
   const currentValue = onChange ? value : localValue;
@@ -125,10 +134,28 @@ export function TimeMachine({
         <span>SADA</span>
       </div>
 
+      {/* Catch up mode indicator */}
+      {isCatchUpMode && (
+        <div className="flex items-center justify-between bg-amber-100 dark:bg-amber-900/30 p-2 rounded-md">
+          <span className="text-sm text-amber-700 dark:text-amber-300">
+            Catch-up mod aktivan
+          </span>
+          {onExitCatchUp && (
+            <button
+              onClick={onExitCatchUp}
+              className="text-xs text-amber-700 dark:text-amber-300 hover:underline min-h-[44px] px-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 rounded"
+            >
+              Izađi
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Catch up button (shown when in the past) */}
       {isInPast && catchUpCount > 0 && (
         <div className="pt-2">
           <button
+            onClick={onCatchUpPlay}
             className="text-sm bg-primary text-primary-foreground px-3 py-2 rounded-md min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             aria-label={`Pusti ${catchUpCount} dogadaja dvostrukom brzinom`}
           >

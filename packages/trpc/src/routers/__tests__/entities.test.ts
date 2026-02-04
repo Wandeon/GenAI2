@@ -4,17 +4,21 @@ import { createCallerFactory, createTRPCContext } from "../../trpc";
 import { entitiesRouter } from "../entities";
 
 // Mock Prisma - must be before importing anything that uses it
-vi.mock("@genai/db", () => ({
-  prisma: {
-    entity: {
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
+vi.mock("@genai/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@genai/db")>();
+  return {
+    ...actual,
+    prisma: {
+      entity: {
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+      },
+      relationship: {
+        findMany: vi.fn(),
+      },
     },
-    relationship: {
-      findMany: vi.fn(),
-    },
-  },
-}));
+  };
+});
 
 import { prisma } from "@genai/db";
 
@@ -119,6 +123,53 @@ describe("entities router", () => {
       expect(ctx.db).toBeDefined();
       expect(typeof ctx.db.entity.findUnique).toBe("function");
       expect(typeof ctx.db.entity.findMany).toBe("function");
+    });
+  });
+
+  describe("fuzzySearch", () => {
+    it("searches by name case-insensitive", async () => {
+      vi.mocked(prisma.entity.findMany).mockResolvedValue([mockEntity] as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.fuzzySearch({ query: "open" });
+
+      expect(prisma.entity.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              { name: { contains: "open", mode: "insensitive" } },
+            ]),
+          }),
+        })
+      );
+      expect(result).toEqual([mockEntity]);
+    });
+
+    it("filters by entity type", async () => {
+      vi.mocked(prisma.entity.findMany).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      await caller.fuzzySearch({ query: "test", types: ["COMPANY", "LAB"] });
+
+      expect(prisma.entity.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: { in: ["COMPANY", "LAB"] },
+          }),
+        })
+      );
+    });
+
+    it("returns empty array for no matches", async () => {
+      vi.mocked(prisma.entity.findMany).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.fuzzySearch({ query: "zzz" });
+
+      expect(result).toEqual([]);
     });
   });
 });

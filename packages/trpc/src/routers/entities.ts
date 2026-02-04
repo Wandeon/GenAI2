@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityType } from "@genai/db";
 import { router, publicProcedure } from "../trpc";
 
 export const entitiesRouter = router({
@@ -33,6 +34,40 @@ export const entitiesRouter = router({
     .query(async ({ input: _input }) => {
       // TODO: Implement with aliases and fuzzy matching
       return [];
+    }),
+
+  // Fuzzy search entities by name, nameHr, or aliases
+  fuzzySearch: publicProcedure
+    .input(
+      z.object({
+        query: z.string().min(1),
+        limit: z.number().min(1).max(50).default(10),
+        types: z.array(z.nativeEnum(EntityType)).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const entities = await ctx.db.entity.findMany({
+        where: {
+          OR: [
+            { name: { contains: input.query, mode: "insensitive" } },
+            { nameHr: { contains: input.query, mode: "insensitive" } },
+            {
+              aliases: {
+                some: { alias: { contains: input.query, mode: "insensitive" } },
+              },
+            },
+          ],
+          ...(input.types && { type: { in: input.types } }),
+        },
+        include: {
+          aliases: true,
+          _count: { select: { mentions: true } },
+        },
+        orderBy: { importance: "desc" },
+        take: input.limit,
+      });
+
+      return entities;
     }),
 
   // Get entity timeline (events mentioning this entity)

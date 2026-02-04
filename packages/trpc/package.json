@@ -15,7 +15,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests yet for @genai/trpc\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@trpc/client": "^11.0.0",
@@ -25,7 +25,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^2.1.0"
   },
   "peerDependencies": {
     "@genai/db": "workspace:*",

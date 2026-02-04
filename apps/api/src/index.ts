@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { appRouter, createTRPCContext } from "@genai/trpc";
+import { registerSSE } from "./sse/events";
 
 const server = Fastify({
   logger: true,
@@ -26,6 +27,9 @@ await server.register(fastifyTRPCPlugin, {
     createContext: createTRPCContext,
   },
 });
+
+// Register SSE endpoints for real-time updates
+await registerSSE(server);
 
 // Health check (both paths for flexibility)
 server.get("/health", async () => {

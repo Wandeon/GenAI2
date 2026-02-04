@@ -1,12 +1,24 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 
-// Placeholder entities router - will query Entity model
 export const entitiesRouter = router({
-  // Get entity by slug
-  bySlug: publicProcedure.input(z.string()).query(async ({ input: _input }) => {
-    // TODO: Implement with Prisma
-    return null;
+  // Get entity by slug with aliases and mention counts
+  bySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const entity = await ctx.db.entity.findUnique({
+      where: { slug: input },
+      include: {
+        aliases: true,
+        _count: {
+          select: {
+            mentions: true,
+            sourceRels: true,
+            targetRels: true,
+          },
+        },
+      },
+    });
+
+    return entity;
   }),
 
   // Search entities with fuzzy matching

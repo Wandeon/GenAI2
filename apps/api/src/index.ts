@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
-import { appRouter, type Context } from "@genai/trpc";
+import { appRouter, createTRPCContext } from "@genai/trpc";
 
 const server = Fastify({
   logger: true,
@@ -18,18 +18,12 @@ await server.register(cookie, {
   secret: process.env.COOKIE_SECRET || "development-secret-change-in-production",
 });
 
-// Create tRPC context
-function createContext(): Context {
-  // TODO: Add session, db client, etc.
-  return {};
-}
-
-// Register tRPC
+// Register tRPC with Prisma context
 await server.register(fastifyTRPCPlugin, {
   prefix: "/trpc",
   trpcOptions: {
     router: appRouter,
-    createContext,
+    createContext: createTRPCContext,
   },
 });
 

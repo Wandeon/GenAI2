@@ -172,4 +172,59 @@ describe("entities router", () => {
       expect(result).toEqual([]);
     });
   });
+
+  // ============================================================================
+  // RELATED ENTITIES TESTS
+  // ============================================================================
+
+  const mockRelationships = [
+    {
+      id: "rel_1",
+      sourceId: "ent_1",
+      targetId: "ent_2",
+      type: "RELEASED",
+      status: "APPROVED",
+      source: { id: "ent_1", name: "OpenAI", type: "COMPANY", slug: "openai" },
+      target: { id: "ent_2", name: "GPT-4", type: "MODEL", slug: "gpt-4" },
+    },
+    {
+      id: "rel_2",
+      sourceId: "ent_3",
+      targetId: "ent_1",
+      type: "FUNDED",
+      status: "APPROVED",
+      source: { id: "ent_3", name: "Microsoft", type: "COMPANY", slug: "microsoft" },
+      target: { id: "ent_1", name: "OpenAI", type: "COMPANY", slug: "openai" },
+    },
+  ];
+
+  describe("related", () => {
+    it("returns related entities with connection counts", async () => {
+      vi.mocked(prisma.relationship.findMany).mockResolvedValue(mockRelationships as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.related({ entityId: "ent_1" });
+
+      expect(prisma.relationship.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [{ sourceId: "ent_1" }, { targetId: "ent_1" }],
+            status: "APPROVED",
+          }),
+        })
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it("returns empty array when no relationships", async () => {
+      vi.mocked(prisma.relationship.findMany).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.related({ entityId: "ent_999" });
+
+      expect(result).toEqual([]);
+    });
+  });
 });

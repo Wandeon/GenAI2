@@ -86,4 +86,66 @@ export const entitiesRouter = router({
         nextCursor: null as string | null,
       };
     }),
+
+  // Get related entities through approved relationships
+  related: publicProcedure
+    .input(
+      z.object({
+        entityId: z.string(),
+        limit: z.number().min(1).max(20).default(10),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const relationships = await ctx.db.relationship.findMany({
+        where: {
+          OR: [{ sourceId: input.entityId }, { targetId: input.entityId }],
+          status: "APPROVED",
+        },
+        include: {
+          source: true,
+          target: true,
+        },
+      });
+
+      // Count connections per entity
+      const connectionCounts = new Map<
+        string,
+        {
+          entity: (typeof relationships)[0]["source"];
+          count: number;
+          types: Set<string>;
+        }
+      >();
+
+      for (const rel of relationships) {
+        const otherId =
+          rel.sourceId === input.entityId ? rel.targetId : rel.sourceId;
+        const other =
+          rel.sourceId === input.entityId ? rel.target : rel.source;
+
+        if (connectionCounts.has(otherId)) {
+          const existing = connectionCounts.get(otherId)!;
+          existing.count++;
+          existing.types.add(rel.type);
+        } else {
+          connectionCounts.set(otherId, {
+            entity: other,
+            count: 1,
+            types: new Set([rel.type]),
+          });
+        }
+      }
+
+      // Sort by count and limit
+      const sorted = [...connectionCounts.values()]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, input.limit)
+        .map(({ entity, count, types }) => ({
+          entity,
+          connectionCount: count,
+          relationshipTypes: [...types],
+        }));
+
+      return sorted;
+    }),
 });

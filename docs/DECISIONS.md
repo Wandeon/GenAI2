@@ -116,3 +116,13 @@ This document records key technical choices for the scaffold.
 - **Decision**: Most processors only work on events in ENRICHED or PUBLISHED status.
 - **Why**: Prevents processing incomplete or quarantined events. State machine ensures proper flow.
 - **Flow**: RAW (create) → ENRICHED (enrich) → Processing (extract/assign/match) → PUBLISHED
+
+---
+
+## Phase 4 Daily Run Decisions (2026-02-04)
+
+### 21) DailyBriefing Model: Date-Unique with Ranked Items
+- **Decision**: `DailyBriefing` has unique date constraint, `DailyBriefingItem` links to events with rank (1-5).
+- **Why**: One briefing per day with ordered top events. Enables ritual daily consumption.
+- **Payload**: Typed JSON validated by `DailyBriefingPayload` Zod schema containing changedSince, prediction, action, gmNote.
+- **Backward Compatibility**: New tables, no existing data affected.

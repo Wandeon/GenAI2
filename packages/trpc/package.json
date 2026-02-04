@@ -11,6 +11,18 @@
     "./client": {
       "types": "./src/client.ts",
       "default": "./src/client.ts"
+    },
+    "./services/hn-feed": {
+      "types": "./src/services/hn-feed.ts",
+      "default": "./src/services/hn-feed.ts"
+    },
+    "./services/github-feed": {
+      "types": "./src/services/github-feed.ts",
+      "default": "./src/services/github-feed.ts"
+    },
+    "./services/arxiv-feed": {
+      "types": "./src/services/arxiv-feed.ts",
+      "default": "./src/services/arxiv-feed.ts"
     }
   },
   "scripts": {

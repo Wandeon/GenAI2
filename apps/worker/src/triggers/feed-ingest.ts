@@ -1,5 +1,9 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
+import { fetchHNTopStories } from "@genai/trpc/services/hn-feed";
+import { fetchGitHubTrending } from "@genai/trpc/services/github-feed";
+import { fetchArxivPapers } from "@genai/trpc/services/arxiv-feed";
+import type { NormalizedEvent } from "@genai/shared";
 
 // ============================================================================
 // FEED INGESTION TRIGGER
@@ -9,8 +13,7 @@ import IORedis from "ioredis";
 //
 // Run via: pnpm ingest
 //
-// This is a SCAFFOLD - the actual feed fetching logic needs to be filled in
-// once the feed service implementations are ready.
+// Uses existing feed services from @genai/trpc/services/
 
 // ============================================================================
 // TYPES
@@ -37,50 +40,54 @@ export interface FeedSource {
 // ============================================================================
 
 function log(message: string): void {
-  console.log(`[feed-ingest] ${message}`);
+  process.env.NODE_ENV !== "test" &&
+    console.log(`[feed-ingest] ${message}`);
 }
 
 // ============================================================================
-// FEED SOURCE SCAFFOLDS
+// FEED SOURCE ADAPTERS
 // ============================================================================
-// These are placeholder implementations. Real implementations should:
-// - Fetch from the actual APIs
-// - Handle rate limiting
-// - Handle pagination
-// - Handle errors gracefully
+// These adapt the existing feed services (which return NormalizedEvent[])
+// to the FeedItem[] format expected by the ingestion pipeline.
+
+function normalizedEventToFeedItem(
+  event: NormalizedEvent,
+  sourceType: FeedItem["sourceType"]
+): FeedItem {
+  return {
+    url: event.url,
+    title: event.title,
+    publishedAt: event.occurredAt,
+    sourceType,
+    sourceId: event.externalId,
+  };
+}
 
 /**
- * Hacker News feed source (scaffold)
+ * Hacker News feed source - fetches AI-related stories from HN
  */
 async function fetchHackerNewsItems(): Promise<FeedItem[]> {
-  log("Fetching Hacker News items (scaffold - returns empty)");
-  // TODO: Implement actual HN API fetching
-  // GET https://hacker-news.firebaseio.com/v0/newstories.json
-  // GET https://hacker-news.firebaseio.com/v0/item/{id}.json
-  return [];
+  log("Fetching Hacker News items...");
+  const events = await fetchHNTopStories(50); // Fetch top 50, filter for AI
+  return events.map((e) => normalizedEventToFeedItem(e, "HN"));
 }
 
 /**
- * GitHub trending/releases feed source (scaffold)
+ * GitHub trending feed source - fetches trending AI/ML repos
  */
 async function fetchGitHubItems(): Promise<FeedItem[]> {
-  log("Fetching GitHub items (scaffold - returns empty)");
-  // TODO: Implement actual GitHub API fetching
-  // Use GitHub REST API or GraphQL for:
-  // - Trending repositories in AI/ML
-  // - New releases from tracked repos
-  // - Discussions/announcements
-  return [];
+  log("Fetching GitHub trending items...");
+  const events = await fetchGitHubTrending();
+  return events.map((e) => normalizedEventToFeedItem(e, "GITHUB"));
 }
 
 /**
- * arXiv AI papers feed source (scaffold)
+ * arXiv feed source - fetches recent AI/ML papers
  */
 async function fetchArxivItems(): Promise<FeedItem[]> {
-  log("Fetching arXiv items (scaffold - returns empty)");
-  // TODO: Implement actual arXiv API fetching
-  // GET http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG&sortBy=submittedDate&sortOrder=descending
-  return [];
+  log("Fetching arXiv papers...");
+  const events = await fetchArxivPapers();
+  return events.map((e) => normalizedEventToFeedItem(e, "ARXIV"));
 }
 
 // ============================================================================

@@ -9,6 +9,13 @@ export const HeadlinePayload = z.object({
   hr: z.string(),
 });
 
+export const WhatHappenedPayload = z.object({
+  en: z.string(),
+  hr: z.string(),
+  sourceLine: z.string(),
+  disagreements: z.array(z.string()).optional(),
+});
+
 export const SummaryPayload = z.object({
   en: z.string(),
   hr: z.string(),
@@ -86,6 +93,7 @@ export const RelationshipExtractPayload = z.object({
 // ============================================================================
 
 export type HeadlinePayload = z.infer<typeof HeadlinePayload>;
+export type WhatHappenedPayload = z.infer<typeof WhatHappenedPayload>;
 export type SummaryPayload = z.infer<typeof SummaryPayload>;
 export type GMTakePayload = z.infer<typeof GMTakePayload>;
 export type WhyMattersPayload = z.infer<typeof WhyMattersPayload>;
@@ -99,6 +107,7 @@ export type RelationshipExtractPayload = z.infer<typeof RelationshipExtractPaylo
 
 export const ArtifactSchemas = {
   HEADLINE: HeadlinePayload,
+  WHAT_HAPPENED: WhatHappenedPayload,
   SUMMARY: SummaryPayload,
   GM_TAKE: GMTakePayload,
   WHY_MATTERS: WhyMattersPayload,
@@ -111,6 +120,7 @@ export type ArtifactType = keyof typeof ArtifactSchemas;
 
 export type ArtifactPayloadMap = {
   HEADLINE: HeadlinePayload;
+  WHAT_HAPPENED: WhatHappenedPayload;
   SUMMARY: SummaryPayload;
   GM_TAKE: GMTakePayload;
   WHY_MATTERS: WhyMattersPayload;

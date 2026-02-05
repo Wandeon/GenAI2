@@ -7,7 +7,7 @@
 import type { EventForBriefing } from "./daily-briefing.types";
 
 export const PROCESSOR_NAME = "daily-briefing";
-export const PROMPT_VERSION = "1.0.0";
+export const PROMPT_VERSION = "2.0.0";
 
 /**
  * Tagged logger for daily-briefing processor.
@@ -21,20 +21,29 @@ export function log(message: string): void {
 
 /**
  * Build events text for LLM prompt from loaded events.
+ * Gracefully includes WHAT_HAPPENED and WHY_MATTERS when present.
  */
 export function buildEventsText(events: EventForBriefing[]): string {
   return events
     .map((e, i) => {
       const headline = e.artifacts.find((a) => a.artifactType === "HEADLINE");
       const summary = e.artifacts.find((a) => a.artifactType === "SUMMARY");
+      const whatHappened = e.artifacts.find((a) => a.artifactType === "WHAT_HAPPENED");
+      const whyMatters = e.artifacts.find((a) => a.artifactType === "WHY_MATTERS");
+
       const headlineText =
         (headline?.payload as { en?: string })?.en || e.title;
       const summaryText =
         (summary?.payload as { en?: string })?.en || "No summary";
+      const whatText = (whatHappened?.payload as { en?: string })?.en;
+      const whyText = (whyMatters?.payload as { text?: string })?.text;
       const entities = e.mentions.map((m) => m.entity.name).join(", ");
-      return `${i + 1}. ${headlineText}
-   ${summaryText}
-   Entities: ${entities || "None"}`;
+
+      let block = `${i + 1}. ${headlineText}\n   ${summaryText}`;
+      if (whatText) block += `\n   What happened: ${whatText}`;
+      if (whyText) block += `\n   Why it matters: ${whyText}`;
+      block += `\n   Entities: ${entities || "None"}`;
+      return block;
     })
     .join("\n\n");
 }
@@ -67,51 +76,6 @@ export function extractTopEntities(
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([name]) => name);
-}
-
-/**
- * Generate the briefing prompt for GM.
- */
-export function generateBriefingPrompt(eventsText: string, date: string): string {
-  return `You are GM, an AI news curator for Croatian audiences. Generate a daily briefing for ${date}.
-
-Today's events (ranked by importance):
-${eventsText}
-
-Requirements:
-1. Summarize what changed in AI world since yesterday
-2. Provide a prediction for what to watch this week (mark speculation clearly)
-3. Optionally suggest an action for readers
-4. Add a personal GM note if appropriate
-5. Never use corporate-speak (revolutionary, game-changing)
-6. Croatian should use proper grammar (preposition "u", not "v")
-7. Be honest about uncertainty
-
-Respond with ONLY a JSON object in this exact format:
-{
-  "changedSince": {
-    "en": "Brief summary of what changed",
-    "hr": "Kratki pregled promjena",
-    "highlights": ["Highlight 1", "Highlight 2", "Highlight 3"]
-  },
-  "prediction": {
-    "en": "What to watch this week",
-    "hr": "Što pratiti ovaj tjedan",
-    "confidence": "low" | "medium" | "high",
-    "caveats": ["Caveat if any"]
-  },
-  "action": {
-    "en": "Suggested reader action (optional)",
-    "hr": "Preporučena radnja (opcionalno)"
-  },
-  "gmNote": {
-    "en": "Personal note from GM (optional)",
-    "hr": "Osobna poruka od GM-a (opcionalno)"
-  },
-  "eventCount": <number>,
-  "sourceCount": <number>,
-  "topEntities": ["Entity1", "Entity2"]
-}`;
 }
 
 /**

@@ -15,22 +15,49 @@ const BilingualText = z.object({
 });
 
 /**
+ * A single turn in the Council Roundtable discussion.
+ * Three personas (GM, Engineer, Skeptic) debate the day's events.
+ */
+export const RoundtableTurn = z.object({
+  persona: z.enum(["GM", "Engineer", "Skeptic"]),
+  moveType: z.enum([
+    "SETUP",
+    "TECH_READ",
+    "RISK_CHECK",
+    "CROSS_EXAM",
+    "EVIDENCE_CALL",
+    "TAKEAWAY",
+  ]),
+  text: z.string(),
+  textHr: z.string(),
+  eventRef: z.number().int().min(1).max(10).optional(),
+});
+
+export type RoundtableTurn = z.infer<typeof RoundtableTurn>;
+
+/**
  * DailyBriefingPayload - GM-generated content for daily briefing
  *
  * Contains:
- * - changedSince: Summary of what changed since yesterday
+ * - roundtable: Council Roundtable discussion (new format, v2.0.0+)
+ * - changedSince: Summary of what changed since yesterday (legacy, v1.x)
  * - prediction: GM's prediction for the week (marked as speculation)
  * - action: Optional suggested action for readers
  * - gmNote: Optional personal note from GM
  * - Metadata: eventCount, sourceCount, topEntities
  */
 export const DailyBriefingPayload = z.object({
-  // What changed since yesterday
-  changedSince: z.object({
-    en: z.string(),
-    hr: z.string(),
-    highlights: z.array(z.string()).max(5),
-  }),
+  // New: Council Roundtable discussion (v2.0.0+)
+  roundtable: z.array(RoundtableTurn).min(4).max(10).optional(),
+
+  // Legacy: what changed since yesterday (deprecated, kept for old briefings)
+  changedSince: z
+    .object({
+      en: z.string(),
+      hr: z.string(),
+      highlights: z.array(z.string()).max(5),
+    })
+    .optional(),
 
   // GM's prediction for the week
   prediction: z.object({

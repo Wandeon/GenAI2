@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="hr">
+    <html lang="hr" className="dark">
       <body className="min-h-screen bg-background font-sans antialiased">
         <TRPCProvider>{children}</TRPCProvider>
       </body>

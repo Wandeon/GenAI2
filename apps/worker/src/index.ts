@@ -1,5 +1,6 @@
 import { Worker, Queue, type Job } from "bullmq";
 import IORedis from "ioredis";
+import { ingestFeeds } from "./triggers/feed-ingest";
 
 // ============================================================================
 // WORKER ENTRY POINT - Event-driven pipeline orchestration
@@ -64,6 +65,7 @@ export const queues = {
   relationshipExtract: new Queue<RelationshipExtractJob>("relationship-extract", { connection }),
   watchlistMatch: new Queue<WatchlistMatchJob>("watchlist-match", { connection }),
   dailyBriefing: new Queue<DailyBriefingJob>("daily-briefing", { connection }),
+  feedIngest: new Queue("feed-ingest", { connection }),
 } as const;
 
 // ============================================================================
@@ -197,6 +199,51 @@ dailyBriefingWorker.on("completed", async (job: Job<DailyBriefingJob>) => {
   log(`daily-briefing completed for ${job.data.date}`);
 });
 workers.push(dailyBriefingWorker);
+
+// 9. Feed Ingest Worker - fetches from all 11 sources, enqueues evidence-snapshot jobs
+const feedIngestWorker = new Worker(
+  "feed-ingest",
+  async () => {
+    log("Feed ingest triggered, fetching from all sources...");
+    const count = await ingestFeeds(redisUrl);
+    log(`Feed ingest complete: ${count} items enqueued`);
+    return { count };
+  },
+  { connection }
+);
+feedIngestWorker.on("completed", async (_job, result) => {
+  log(`feed-ingest completed: ${result?.count ?? 0} items`);
+});
+workers.push(feedIngestWorker);
+
+// ============================================================================
+// SCHEDULED / REPEATABLE JOBS
+// ============================================================================
+
+async function setupRepeatableJobs() {
+  // Feed ingest: every 2 hours
+  await queues.feedIngest.upsertJobScheduler(
+    "feed-ingest-schedule",
+    { pattern: "0 */2 * * *" },
+    { name: "scheduled-ingest" }
+  );
+  log("Scheduled feed-ingest: every 2 hours (0 */2 * * *)");
+
+  // Daily briefing: 05:00 UTC = 06:00 CET
+  await queues.dailyBriefing.upsertJobScheduler(
+    "daily-briefing-schedule",
+    { pattern: "0 5 * * *" },
+    {
+      name: "scheduled-briefing",
+      data: { date: new Date().toISOString().slice(0, 10) },
+    }
+  );
+  log("Scheduled daily-briefing: 05:00 UTC (06:00 CET)");
+}
+
+setupRepeatableJobs().catch((err) => {
+  log(`Failed to setup repeatable jobs: ${err instanceof Error ? err.message : String(err)}`);
+});
 
 // ============================================================================
 // ERROR HANDLING

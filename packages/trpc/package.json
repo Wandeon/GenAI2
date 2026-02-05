@@ -23,6 +23,38 @@
     "./services/arxiv-feed": {
       "types": "./src/services/arxiv-feed.ts",
       "default": "./src/services/arxiv-feed.ts"
+    },
+    "./services/reddit-feed": {
+      "types": "./src/services/reddit-feed.ts",
+      "default": "./src/services/reddit-feed.ts"
+    },
+    "./services/devto-feed": {
+      "types": "./src/services/devto-feed.ts",
+      "default": "./src/services/devto-feed.ts"
+    },
+    "./services/lobsters-feed": {
+      "types": "./src/services/lobsters-feed.ts",
+      "default": "./src/services/lobsters-feed.ts"
+    },
+    "./services/huggingface-feed": {
+      "types": "./src/services/huggingface-feed.ts",
+      "default": "./src/services/huggingface-feed.ts"
+    },
+    "./services/youtube-feed": {
+      "types": "./src/services/youtube-feed.ts",
+      "default": "./src/services/youtube-feed.ts"
+    },
+    "./services/producthunt-feed": {
+      "types": "./src/services/producthunt-feed.ts",
+      "default": "./src/services/producthunt-feed.ts"
+    },
+    "./services/newsapi-feed": {
+      "types": "./src/services/newsapi-feed.ts",
+      "default": "./src/services/newsapi-feed.ts"
+    },
+    "./services/leaderboard-feed": {
+      "types": "./src/services/leaderboard-feed.ts",
+      "default": "./src/services/leaderboard-feed.ts"
     }
   },
   "scripts": {

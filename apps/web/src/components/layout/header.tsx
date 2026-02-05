@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { TimeMachine } from "@/components/time-machine";
-import { useTime } from "@/context/time-context";
 import { trpc } from "@/trpc";
 
 interface HeaderProps {
@@ -10,7 +8,6 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
 }
 
-// Search icon SVG component
 function SearchIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -35,53 +32,40 @@ export function Header({
   searchQuery,
   onSearchChange,
 }: HeaderProps) {
-  const { scrubberValue, setScrubberValue, catchUpCount, isInPast, targetTimestamp, jumpToNow, isCatchUpMode, exitCatchUp } = useTime();
-
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
       const mobileOutside = mobileDropdownRef.current && !mobileDropdownRef.current.contains(target);
       const desktopOutside = desktopDropdownRef.current && !desktopDropdownRef.current.contains(target);
-
-      // Close if clicked outside both dropdown containers
       if (mobileOutside && desktopOutside) {
         setIsDropdownOpen(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Query instant search
   const { data: searchData, isLoading: isSearching } =
     trpc.search.instant.useQuery(
       { query: debouncedQuery, limit: 10 },
-      {
-        enabled: debouncedQuery.length > 0,
-      }
+      { enabled: debouncedQuery.length > 0 }
     );
 
   const results = searchData?.results ?? [];
 
-  // Open dropdown when there are results
   useEffect(() => {
     if (results.length > 0 && debouncedQuery.length > 0) {
       setIsDropdownOpen(true);
@@ -116,7 +100,6 @@ export function Header({
     }
   };
 
-  // Shared search dropdown component for both mobile and desktop
   const SearchDropdown = () => (
     <>
       {isDropdownOpen && debouncedQuery.length > 0 && (
@@ -172,40 +155,30 @@ export function Header({
   );
 
   return (
-    <header className="border-b bg-card">
+    <header className="glass-header">
       {/* Mobile header */}
       <div className="md:hidden">
         <div className="flex items-center justify-between p-3">
-          <span className="font-bold text-lg">GenAI.hr</span>
           <div className="flex items-center gap-2">
-            {isInPast && (
-              <button
-                onClick={jumpToNow}
-                className="text-xs text-amber-500 px-2 py-1 bg-amber-500/10 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                aria-label={`Preskoci na sada, trenutno prikazujem ${targetTimestamp.toLocaleDateString("hr-HR", { day: "numeric", month: "short" })}`}
-              >
-                {targetTimestamp.toLocaleDateString("hr-HR", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </button>
-            )}
-            <button
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              className="p-2 min-w-[44px] min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-              aria-label={mobileSearchOpen ? "Zatvori pretragu" : "Otvori pretragu"}
-              aria-expanded={mobileSearchOpen}
-            >
-              <SearchIcon aria-hidden="true" />
-            </button>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
+            <span className="font-bold text-lg">GenAI.hr</span>
           </div>
+          <button
+            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+            className="p-2 min-w-[44px] min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+            aria-label={mobileSearchOpen ? "Zatvori pretragu" : "Otvori pretragu"}
+            aria-expanded={mobileSearchOpen}
+          >
+            <SearchIcon aria-hidden="true" />
+          </button>
         </div>
-        {/* Expandable search on mobile */}
         {mobileSearchOpen && (
           <div className="px-3 pb-3">
             <div className="relative" ref={mobileDropdownRef}>
               <input
-                ref={inputRef}
                 type="search"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
@@ -223,10 +196,15 @@ export function Header({
       {/* Desktop header */}
       <div className="hidden md:block">
         <div className="flex items-center gap-4 p-4">
-          <h1 className="text-xl font-bold whitespace-nowrap">Observatory</h1>
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
+            <h1 className="text-xl font-bold whitespace-nowrap">GenAI Observatory</h1>
+          </div>
           <div className="relative flex-1" ref={desktopDropdownRef}>
             <input
-              ref={inputRef}
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -236,19 +214,6 @@ export function Header({
             />
             <SearchDropdown />
           </div>
-        </div>
-        <div className="px-4 pb-4">
-          <TimeMachine
-            value={scrubberValue}
-            onChange={setScrubberValue}
-            catchUpCount={catchUpCount}
-            isCatchUpMode={isCatchUpMode}
-            onExitCatchUp={exitCatchUp}
-            onCatchUpPlay={() => {
-              // Jump to now position to "play through" all events
-              jumpToNow();
-            }}
-          />
         </div>
       </div>
     </header>

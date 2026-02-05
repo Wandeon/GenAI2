@@ -253,11 +253,11 @@ export default function DailyRunPage() {
           {catchUp && catchUp.count > 0 && (
             <div className="pt-4">
               <Link
-                href={`/observatory?catchUp=${catchUp.since?.toISOString()}`}
+                href="/observatory"
                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
               >
                 <Clock className="w-4 h-4" />
-                Pusti {catchUp.count} događaja (2x brzina)
+                Pogledaj {catchUp.count} novih događaja
               </Link>
             </div>
           )}

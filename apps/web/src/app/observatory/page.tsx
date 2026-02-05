@@ -1,106 +1,38 @@
 "use client";
 
-import { Suspense, useMemo, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { Lane } from "@/components/lane";
 import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
-import { useTime } from "@/context/time-context";
 import { useSelection } from "@/context/selection-context";
 import { useMobileLane, type LaneId } from "@/context/mobile-lane-context";
 import { useSwipe } from "@/hooks";
 
 const lanes: LaneId[] = ["hn", "github", "arxiv"];
 
-// Wrapper component with Suspense boundary for useSearchParams
 export default function ObservatoryPage() {
-  return (
-    <Suspense fallback={<ObservatoryLoading />}>
-      <ObservatoryContent />
-    </Suspense>
-  );
-}
-
-function ObservatoryLoading() {
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="animate-pulse text-muted-foreground">Učitavanje...</div>
-    </div>
-  );
-}
-
-function ObservatoryContent() {
   const { selectedEvent, selectEvent } = useSelection();
-  const { beforeTime, isInPast, setCatchUpCount, startCatchUp } = useTime();
   const { activeLane, setActiveLane } = useMobileLane();
-  const searchParams = useSearchParams();
-  const catchUpInitialized = useRef(false);
-
-  // Handle catchUp query parameter from Daily Run
-  useEffect(() => {
-    if (catchUpInitialized.current) return;
-
-    const catchUpParam = searchParams.get("catchUp");
-    if (catchUpParam) {
-      const catchUpDate = new Date(catchUpParam);
-      if (!isNaN(catchUpDate.getTime())) {
-        startCatchUp(catchUpDate);
-        catchUpInitialized.current = true;
-      }
-    }
-  }, [searchParams, startCatchUp]);
 
   const currentIndex = lanes.indexOf(activeLane);
-
   const { handleTouchStart, handleTouchEnd } = useSwipe({
     onSwipeLeft: () => {
-      if (currentIndex < lanes.length - 1) {
-        setActiveLane(lanes[currentIndex + 1]);
-      }
+      if (currentIndex < lanes.length - 1) setActiveLane(lanes[currentIndex + 1]);
     },
     onSwipeRight: () => {
-      if (currentIndex > 0) {
-        setActiveLane(lanes[currentIndex - 1]);
-      }
+      if (currentIndex > 0) setActiveLane(lanes[currentIndex - 1]);
     },
   });
 
-  // Query events with database-side time filtering
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 100,
-    beforeTime: beforeTime ?? undefined,
   });
 
   const events = eventsData?.items ?? [];
 
-  // Query catch-up count when viewing the past
-  const { data: countData } = trpc.events.countSince.useQuery(
-    { since: beforeTime! },
-    { enabled: isInPast && !!beforeTime }
-  );
-
-  // Update context with catch-up count
-  useEffect(() => {
-    if (isInPast && countData) {
-      setCatchUpCount(countData.count);
-    } else {
-      setCatchUpCount(0);
-    }
-  }, [isInPast, countData, setCatchUpCount]);
-
-  // Split by source type
-  const hnEvents = useMemo(
-    () => events.filter((e) => e.sourceType === "HN"),
-    [events]
-  );
-  const ghEvents = useMemo(
-    () => events.filter((e) => e.sourceType === "GITHUB"),
-    [events]
-  );
-  const arxivEvents = useMemo(
-    () => events.filter((e) => e.sourceType === "ARXIV"),
-    [events]
-  );
+  const hnEvents = useMemo(() => events.filter((e) => e.sourceType === "HN"), [events]);
+  const ghEvents = useMemo(() => events.filter((e) => e.sourceType === "GITHUB"), [events]);
+  const arxivEvents = useMemo(() => events.filter((e) => e.sourceType === "ARXIV"), [events]);
 
   const renderEventCard = (event: (typeof events)[0]) => (
     <EventCard
@@ -113,9 +45,7 @@ function ObservatoryContent() {
       sourceCount={event.sourceCount}
       topics={event.topics}
       isSelected={selectedEvent?.id === event.id}
-      onClick={() => {
-        selectEvent(event);
-      }}
+      onClick={() => selectEvent(event)}
     />
   );
 
@@ -123,104 +53,32 @@ function ObservatoryContent() {
     <div className="h-full">
       {/* Desktop: 3 columns */}
       <div className="hidden md:grid md:grid-cols-3 gap-4 h-full">
-        <Lane
-          title="Hacker News"
-          icon={<span className="text-orange-500">🔶</span>}
-          count={hnEvents.length}
-          isLoading={isLoading}
-        >
-          {hnEvents.length > 0 ? (
-            hnEvents.map(renderEventCard)
-          ) : (
-            <p className="text-muted-foreground text-sm p-2">
-              Nema HN vijesti
-            </p>
-          )}
+        <Lane title="Hacker News" icon={<span className="text-orange-500">🔶</span>} count={hnEvents.length} isLoading={isLoading}>
+          {hnEvents.length > 0 ? hnEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema HN vijesti</p>}
         </Lane>
-
-        <Lane
-          title="GitHub"
-          icon={<span>🐙</span>}
-          count={ghEvents.length}
-          isLoading={isLoading}
-        >
-          {ghEvents.length > 0 ? (
-            ghEvents.map(renderEventCard)
-          ) : (
-            <p className="text-muted-foreground text-sm p-2">
-              Nema GitHub projekata
-            </p>
-          )}
+        <Lane title="GitHub" icon={<span>🐙</span>} count={ghEvents.length} isLoading={isLoading}>
+          {ghEvents.length > 0 ? ghEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema GitHub projekata</p>}
         </Lane>
-
-        <Lane
-          title="Radovi"
-          icon={<span>📄</span>}
-          count={arxivEvents.length}
-          isLoading={isLoading}
-        >
-          {arxivEvents.length > 0 ? (
-            arxivEvents.map(renderEventCard)
-          ) : (
-            <p className="text-muted-foreground text-sm p-2">
-              Nema radova
-            </p>
-          )}
+        <Lane title="Radovi" icon={<span>📄</span>} count={arxivEvents.length} isLoading={isLoading}>
+          {arxivEvents.length > 0 ? arxivEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema radova</p>}
         </Lane>
       </div>
 
-      {/* Mobile: Single lane based on active tab with swipe support */}
-      <div
-        className="md:hidden h-full pb-20"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      {/* Mobile: Single lane */}
+      <div className="md:hidden h-full pb-20" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {activeLane === "hn" && (
-          <Lane
-            title="Hacker News"
-            icon={<span className="text-orange-500">🔶</span>}
-            count={hnEvents.length}
-            isLoading={isLoading}
-          >
-            {hnEvents.length > 0 ? (
-              hnEvents.map(renderEventCard)
-            ) : (
-              <p className="text-muted-foreground text-sm p-2">
-                Nema HN vijesti
-              </p>
-            )}
+          <Lane title="Hacker News" icon={<span className="text-orange-500">🔶</span>} count={hnEvents.length} isLoading={isLoading}>
+            {hnEvents.length > 0 ? hnEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema HN vijesti</p>}
           </Lane>
         )}
         {activeLane === "github" && (
-          <Lane
-            title="GitHub"
-            icon={<span>🐙</span>}
-            count={ghEvents.length}
-            isLoading={isLoading}
-          >
-            {ghEvents.length > 0 ? (
-              ghEvents.map(renderEventCard)
-            ) : (
-              <p className="text-muted-foreground text-sm p-2">
-                Nema GitHub projekata
-              </p>
-            )}
+          <Lane title="GitHub" icon={<span>🐙</span>} count={ghEvents.length} isLoading={isLoading}>
+            {ghEvents.length > 0 ? ghEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema GitHub projekata</p>}
           </Lane>
         )}
         {activeLane === "arxiv" && (
-          <Lane
-            title="Radovi"
-            icon={<span>📄</span>}
-            count={arxivEvents.length}
-            isLoading={isLoading}
-          >
-            {arxivEvents.length > 0 ? (
-              arxivEvents.map(renderEventCard)
-            ) : (
-              <p className="text-muted-foreground text-sm p-2">
-                Nema radova
-              </p>
-            )}
+          <Lane title="Radovi" icon={<span>📄</span>} count={arxivEvents.length} isLoading={isLoading}>
+            {arxivEvents.length > 0 ? arxivEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema radova</p>}
           </Lane>
         )}
       </div>

@@ -6,20 +6,12 @@ interface UseKeyboardNavOptions {
   onNext: () => void;
   onPrev: () => void;
   onSelect: () => void;
-  onStepBack: () => void;
-  onStepForward: () => void;
-  onDayBack: () => void;
-  onDayForward: () => void;
 }
 
 export function useKeyboardNav({
   onNext,
   onPrev,
   onSelect,
-  onStepBack,
-  onStepForward,
-  onDayBack,
-  onDayForward,
 }: UseKeyboardNavOptions) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -40,23 +32,9 @@ export function useKeyboardNav({
         case "Enter":
           onSelect();
           break;
-        case "[":
-          if (e.shiftKey) {
-            onDayBack();
-          } else {
-            onStepBack();
-          }
-          break;
-        case "]":
-          if (e.shiftKey) {
-            onDayForward();
-          } else {
-            onStepForward();
-          }
-          break;
       }
     },
-    [onNext, onPrev, onSelect, onStepBack, onStepForward, onDayBack, onDayForward]
+    [onNext, onPrev, onSelect]
   );
 
   useEffect(() => {

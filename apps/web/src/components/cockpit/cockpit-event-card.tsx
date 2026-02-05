@@ -9,6 +9,7 @@ interface CockpitEventCardProps {
   occurredAt: Date;
   impactLevel: "BREAKING" | "HIGH" | "MEDIUM" | "LOW";
   sourceCount: number;
+  confidence?: "HIGH" | "MEDIUM" | "LOW" | null;
   topics?: string[];
   isSelected?: boolean;
   onClick?: () => void;
@@ -21,12 +22,19 @@ const impactDot: Record<string, string> = {
   LOW: "bg-gray-500",
 };
 
+const confidenceBadge: Record<string, { dot: string; label: string; text: string }> = {
+  HIGH: { dot: "bg-emerald-500", label: "HIGH", text: "text-emerald-400" },
+  MEDIUM: { dot: "bg-amber-500", label: "MEDIUM", text: "text-amber-400" },
+  LOW: { dot: "bg-red-500", label: "LOW", text: "text-red-400" },
+};
+
 export function CockpitEventCard({
   title,
   titleHr,
   occurredAt,
   impactLevel,
   sourceCount,
+  confidence,
   topics,
   isSelected,
   onClick,
@@ -63,6 +71,15 @@ export function CockpitEventCard({
               <>
                 <span>·</span>
                 <span>{sourceCount} izvora</span>
+              </>
+            )}
+            {confidence && confidenceBadge[confidence] && (
+              <>
+                <span>·</span>
+                <span className={`flex items-center gap-1 ${confidenceBadge[confidence].text}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${confidenceBadge[confidence].dot}`} />
+                  {confidenceBadge[confidence].label}
+                </span>
               </>
             )}
           </div>

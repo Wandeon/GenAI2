@@ -13,6 +13,7 @@ interface CockpitEventCardProps {
   topics?: string[];
   isSelected?: boolean;
   onClick?: () => void;
+  onMouseEnter?: () => void;
 }
 
 const impactDot: Record<string, string> = {
@@ -38,6 +39,7 @@ export function CockpitEventCard({
   topics,
   isSelected,
   onClick,
+  onMouseEnter,
 }: CockpitEventCardProps) {
   const displayTitle = titleHr || title;
   const timeStr = new Date(occurredAt).toLocaleTimeString("hr-HR", {
@@ -51,6 +53,7 @@ export function CockpitEventCard({
       whileHover={{ scale: 1.01, backgroundColor: "rgba(255,255,255,0.05)" }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
       className={`w-full text-left p-3 rounded-xl transition-all duration-200 border ${
         isSelected
           ? "border-primary/50 bg-primary/5"

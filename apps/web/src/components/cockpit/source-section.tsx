@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
 import type { NormalizedEvent } from "@genai/shared";
+import { trpc } from "@/trpc";
 import { CockpitEventCard } from "./cockpit-event-card";
 
 interface SourceConfig {
@@ -35,6 +35,8 @@ export function SourceSection({
   isLoading,
   delay = 0,
 }: SourceSectionProps) {
+  const utils = trpc.useUtils();
+
   const totalCount = sources.reduce(
     (sum, s) => sum + (eventsBySource.get(s.key)?.length ?? 0),
     0
@@ -99,6 +101,7 @@ export function SourceSection({
                       topics={event.topics}
                       isSelected={selectedEventId === event.id}
                       onClick={() => onSelectEvent(event)}
+                      onMouseEnter={() => utils.events.byId.prefetch(event.id)}
                     />
                   ))}
                 </div>

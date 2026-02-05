@@ -1,11 +1,19 @@
 import {
-  RawFeedItem,
-  NormalizedEvent,
+  type RawFeedItem,
+  type NormalizedEvent,
   calculateImpactLevel,
-  extractTopics
+  extractTopics,
 } from "@genai/shared";
 
-const GITHUB_API = "https://api.github.com";
+const GITHUB_SEARCH_URL = "https://api.github.com/search/repositories";
+const AI_TOPICS = [
+  "machine-learning", "deep-learning", "llm", "gpt",
+  "artificial-intelligence", "transformer", "neural-network",
+];
+
+function log(msg: string) {
+  process.env.NODE_ENV !== "test" && console.log(`[github-feed] ${msg}`);
+}
 
 interface GitHubRepo {
   id: number;
@@ -20,31 +28,49 @@ interface GitHubRepo {
 }
 
 export async function fetchGitHubTrending(): Promise<NormalizedEvent[]> {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const dateStr = sevenDaysAgo.toISOString().split("T")[0];
+
+  const topicQuery = AI_TOPICS.map((t) => `topic:${t}`).join(" OR ");
+  const query = encodeURIComponent(
+    `${topicQuery} pushed:>${dateStr} stars:>100`
+  );
+
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+    "User-Agent": "GenAI-Observatory/2.0",
+  };
+
+  // Use token if available for higher rate limits (5000/hr vs 10/min)
+  const token = process.env.GITHUB_TOKEN;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    log("GITHUB_TOKEN not set, using unauthenticated API (10 req/min limit)");
+  }
+
+  const url = `${GITHUB_SEARCH_URL}?q=${query}&sort=stars&order=desc&per_page=30`;
+
   try {
-    // Search for AI/ML repos updated in last 7 days with high stars
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    const dateStr = date.toISOString().split("T")[0];
+    const res = await fetch(url, { headers });
 
-    const query = encodeURIComponent(
-      `topic:machine-learning OR topic:deep-learning OR topic:llm OR topic:gpt pushed:>${dateStr} stars:>100`
-    );
-
-    const res = await fetch(
-      `${GITHUB_API}/search/repositories?q=${query}&sort=stars&order=desc&per_page=20`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-        },
+    if (!res.ok) {
+      const remaining = res.headers.get("x-ratelimit-remaining");
+      log(`GitHub API error: ${res.status} ${res.statusText} (rate-limit remaining: ${remaining})`);
+      if (res.status === 403 && remaining === "0") {
+        const resetAt = res.headers.get("x-ratelimit-reset");
+        log(`Rate limited. Resets at ${resetAt ? new Date(Number(resetAt) * 1000).toISOString() : "unknown"}`);
       }
-    );
-
-    if (!res.ok) return [];
+      return [];
+    }
 
     const data = await res.json();
     const repos: GitHubRepo[] = data.items || [];
 
-    const events: NormalizedEvent[] = repos.map((repo) => {
+    log(`Fetched ${repos.length} trending repos`);
+
+    return repos.map((repo) => {
       const rawItem: RawFeedItem = {
         sourceType: "GITHUB",
         externalId: String(repo.id),
@@ -70,10 +96,8 @@ export async function fetchGitHubTrending(): Promise<NormalizedEvent[]> {
           : extractTopics(rawItem),
       };
     });
-
-    return events;
   } catch (error) {
-    console.error("GitHub feed error:", error);
+    log(`Fetch error: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }

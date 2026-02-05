@@ -52,7 +52,7 @@ export {
 // LLM Cost Estimate:
 // - Expected cost per briefing: ~$0.05 (10 events context)
 // - Expected daily cost: ~$0.05 (1 briefing/day)
-// - Mitigation: Cron job runs once at 06:00 CET only
+// - Mitigation: Cron job runs once at 05:00 UTC only
 
 // ============================================================================
 // MAIN PROCESSOR FUNCTION
@@ -108,6 +108,11 @@ export async function generateDailyBriefing(
         gte: startOfDay,
         lte: endOfDay,
       },
+      OR: [
+        { confidence: "HIGH" },
+        { confidence: "MEDIUM" },
+        { confidence: null },
+      ],
     },
     include: {
       artifacts: {
@@ -120,7 +125,11 @@ export async function generateDailyBriefing(
         include: { entity: true },
       },
     },
-    orderBy: { importance: "desc" },
+    orderBy: [
+      { impactLevel: "asc" },
+      { sourceCount: "desc" },
+      { occurredAt: "desc" },
+    ],
     take: 10,
   })) as EventForBriefing[];
 

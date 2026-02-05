@@ -10,7 +10,7 @@ import { ingestFeeds } from "./triggers/feed-ingest";
 // Cron only for heartbeats, not primary scheduling
 //
 // Pipeline Flow:
-// evidence-snapshot → event-create → event-enrich → (entity-extract + topic-assign) → relationship-extract → watchlist-match
+// evidence-snapshot → event-cluster → event-create → confidence-score → event-enrich → (entity-extract + topic-assign) → relationship-extract → watchlist-match
 
 // Import processor worker factories
 import { createEvidenceSnapshotWorker } from "./processors/evidence-snapshot";
@@ -20,6 +20,8 @@ import { createEntityExtractWorker } from "./processors/entity-extract";
 import { createTopicAssignWorker } from "./processors/topic-assign";
 import { createRelationshipExtractWorker } from "./processors/relationship-extract";
 import { createWatchlistMatchWorker } from "./processors/watchlist-match";
+import { createEventClusterWorker } from "./processors/event-cluster";
+import { createConfidenceScoreWorker } from "./processors/confidence-score";
 import { createDailyBriefingWorker } from "./processors/daily-briefing";
 
 // Import job types for type safety
@@ -30,6 +32,8 @@ import type { EntityExtractJob, EntityExtractResult } from "./processors/entity-
 import type { TopicAssignJob, TopicAssignResult } from "./processors/topic-assign";
 import type { RelationshipExtractJob, RelationshipExtractResult } from "./processors/relationship-extract";
 import type { WatchlistMatchJob } from "./processors/watchlist-match";
+import type { EventClusterJob, EventClusterResult } from "./processors/event-cluster";
+import type { ConfidenceScoreJob, ConfidenceScoreResult } from "./processors/confidence-score";
 import type { DailyBriefingJob } from "./processors/daily-briefing";
 
 // ============================================================================
@@ -58,7 +62,9 @@ log(`Connecting to Redis at ${redisUrl}`);
 // Define queues for each processing stage
 export const queues = {
   evidenceSnapshot: new Queue<EvidenceSnapshotJob>("evidence-snapshot", { connection }),
+  eventCluster: new Queue<EventClusterJob>("event-cluster", { connection }),
   eventCreate: new Queue<EventCreateJob>("event-create", { connection }),
+  confidenceScore: new Queue<ConfidenceScoreJob>("confidence-score", { connection }),
   eventEnrich: new Queue<EventEnrichJob>("event-enrich", { connection }),
   entityExtract: new Queue<EntityExtractJob>("entity-extract", { connection }),
   topicAssign: new Queue<TopicAssignJob>("topic-assign", { connection }),
@@ -108,31 +114,60 @@ const workers: Worker[] = [];
 const evidenceSnapshotWorker = createEvidenceSnapshotWorker(connection);
 evidenceSnapshotWorker.on("completed", async (job: Job<EvidenceSnapshotJob>, result: EvidenceSnapshotResult) => {
   if (!result?.snapshotId || !job.data.title) {
-    log(`evidence-snapshot completed for ${job.data.url} but missing data, skipping event-create`);
+    log(`evidence-snapshot completed for ${job.data.url} but missing data, skipping event-cluster`);
     return;
   }
-  log(`evidence-snapshot completed for ${job.data.url}, enqueueing event-create`);
-  await queues.eventCreate.add("create", {
+  log(`evidence-snapshot completed for ${job.data.url}, enqueueing event-cluster`);
+  await queues.eventCluster.add("cluster", {
     snapshotId: result.snapshotId,
     sourceType: job.data.sourceType,
     sourceId: job.data.sourceId,
     title: job.data.title,
-    occurredAt: job.data.publishedAt || new Date().toISOString(),
+    publishedAt: job.data.publishedAt || new Date().toISOString(),
   });
 });
 workers.push(evidenceSnapshotWorker);
 
-// 2. Event Create Worker - on completion, enqueue event-enrich
+// 2. Event Cluster Worker - on completion, enqueue event-create
+const eventClusterWorker = createEventClusterWorker(connection);
+eventClusterWorker.on("completed", async (_job: Job<EventClusterJob>, result: EventClusterResult) => {
+  if ((result.decision as string) === "skipped") {
+    log(`event-cluster skipped for ${result.snapshotId} (already linked)`);
+    return;
+  }
+  log(`event-cluster ${result.decision} for ${result.snapshotId}, enqueueing event-create`);
+  await queues.eventCreate.add("create", {
+    snapshotId: result.snapshotId,
+    sourceType: result.sourceType,
+    sourceId: result.sourceId,
+    title: result.title,
+    occurredAt: result.publishedAt || new Date().toISOString(),
+    matchedEventId: result.matchedEventId ?? undefined,
+  });
+});
+workers.push(eventClusterWorker);
+
+// 3. Event Create Worker - on completion, enqueue confidence-score
 const eventCreateWorker = createEventCreateWorker(connection);
 eventCreateWorker.on("completed", async (_job: Job<EventCreateJob>, result: EventCreateResult) => {
   if (result && result.eventId) {
-    log(`event-create completed for ${result.eventId}, enqueueing event-enrich`);
-    await queues.eventEnrich.add("enrich", { eventId: result.eventId });
+    log(`event-create completed for ${result.eventId}, enqueueing confidence-score`);
+    await queues.confidenceScore.add("score", { eventId: result.eventId });
   }
 });
 workers.push(eventCreateWorker);
 
-// 3. Event Enrich Worker - on completion, enqueue entity-extract AND topic-assign in parallel
+// 4. Confidence Score Worker - on completion, enqueue event-enrich
+const confidenceScoreWorker = createConfidenceScoreWorker(connection);
+confidenceScoreWorker.on("completed", async (_job: Job<ConfidenceScoreJob>, result: ConfidenceScoreResult) => {
+  if (result && result.eventId) {
+    log(`confidence-score completed for ${result.eventId}: ${result.confidence}, enqueueing event-enrich`);
+    await queues.eventEnrich.add("enrich", { eventId: result.eventId });
+  }
+});
+workers.push(confidenceScoreWorker);
+
+// 5. Event Enrich Worker - on completion, enqueue entity-extract AND topic-assign in parallel
 const eventEnrichWorker = createEventEnrichWorker(connection);
 eventEnrichWorker.on("completed", async (_job: Job<EventEnrichJob>, result: EventEnrichResult) => {
   if (result && result.success && !result.skipped && result.eventId) {
@@ -148,7 +183,7 @@ eventEnrichWorker.on("completed", async (_job: Job<EventEnrichJob>, result: Even
 });
 workers.push(eventEnrichWorker);
 
-// 4. Entity Extract Worker - on completion, check if topic-assign is done too
+// 6. Entity Extract Worker - on completion, check if topic-assign is done too
 const entityExtractWorker = createEntityExtractWorker(connection);
 entityExtractWorker.on("completed", async (_job: Job<EntityExtractJob>, result: EntityExtractResult) => {
   if (result && result.eventId) {
@@ -162,7 +197,7 @@ entityExtractWorker.on("completed", async (_job: Job<EntityExtractJob>, result: 
 });
 workers.push(entityExtractWorker);
 
-// 5. Topic Assign Worker - on completion, check if entity-extract is done too
+// 7. Topic Assign Worker - on completion, check if entity-extract is done too
 const topicAssignWorker = createTopicAssignWorker(connection);
 topicAssignWorker.on("completed", async (_job: Job<TopicAssignJob>, result: TopicAssignResult) => {
   if (result && result.eventId) {
@@ -176,7 +211,7 @@ topicAssignWorker.on("completed", async (_job: Job<TopicAssignJob>, result: Topi
 });
 workers.push(topicAssignWorker);
 
-// 6. Relationship Extract Worker - on completion, enqueue watchlist-match
+// 8. Relationship Extract Worker - on completion, enqueue watchlist-match
 const relationshipExtractWorker = createRelationshipExtractWorker(connection);
 relationshipExtractWorker.on("completed", async (_job: Job<RelationshipExtractJob>, result: RelationshipExtractResult) => {
   if (result && result.eventId) {
@@ -186,21 +221,21 @@ relationshipExtractWorker.on("completed", async (_job: Job<RelationshipExtractJo
 });
 workers.push(relationshipExtractWorker);
 
-// 7. Watchlist Match Worker - final step in pipeline
+// 9. Watchlist Match Worker - final step in pipeline
 const watchlistMatchWorker = createWatchlistMatchWorker(connection);
 watchlistMatchWorker.on("completed", async (job: Job<WatchlistMatchJob>) => {
   log(`watchlist-match completed for ${job.data.eventId} - pipeline complete`);
 });
 workers.push(watchlistMatchWorker);
 
-// 8. Daily Briefing Worker - standalone, triggered by cron at 06:00 CET
+// 10. Daily Briefing Worker - standalone, triggered by cron at 06:00 CET
 const dailyBriefingWorker = createDailyBriefingWorker(connection);
 dailyBriefingWorker.on("completed", async (job: Job<DailyBriefingJob>) => {
   log(`daily-briefing completed for ${job.data.date}`);
 });
 workers.push(dailyBriefingWorker);
 
-// 9. Feed Ingest Worker - fetches from all 11 sources, enqueues evidence-snapshot jobs
+// 11. Feed Ingest Worker - fetches from all 11 sources, enqueues evidence-snapshot jobs
 const feedIngestWorker = new Worker(
   "feed-ingest",
   async () => {
@@ -287,7 +322,7 @@ process.on("SIGINT", shutdown);
 // ============================================================================
 
 log(`Worker started with ${workers.length} processors`);
-log("Pipeline: evidence-snapshot → event-create → event-enrich → (entity-extract + topic-assign) → relationship-extract → watchlist-match");
+log("Pipeline: evidence-snapshot → event-cluster → event-create → confidence-score → event-enrich → (entity-extract + topic-assign) → relationship-extract → watchlist-match");
 
 // Export for testing
 export { connection, workers };

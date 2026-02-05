@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { Lane } from "@/components/lane";
-import { EventCard } from "@/components/event-card";
 import { trpc } from "@/trpc";
 import { useSelection } from "@/context/selection-context";
 import { useMobileLane, type LaneId } from "@/context/mobile-lane-context";
 import { useSwipe } from "@/hooks";
+import { StatusBar } from "@/components/cockpit/status-bar";
+import { NewsLane } from "@/components/cockpit/news-lane";
+import { BriefingCard } from "@/components/cockpit/briefing-card";
+import { StatsGrid } from "@/components/cockpit/stats-grid";
+import { CockpitEventCard } from "@/components/cockpit/cockpit-event-card";
 
 const lanes: LaneId[] = ["hn", "github", "arxiv"];
 
@@ -34,8 +37,10 @@ export default function ObservatoryPage() {
   const ghEvents = useMemo(() => events.filter((e) => e.sourceType === "GITHUB"), [events]);
   const arxivEvents = useMemo(() => events.filter((e) => e.sourceType === "ARXIV"), [events]);
 
-  const renderEventCard = (event: (typeof events)[0]) => (
-    <EventCard
+  const lastUpdate = events.length > 0 ? new Date(events[0].occurredAt) : null;
+
+  const renderCard = (event: (typeof events)[0]) => (
+    <CockpitEventCard
       key={event.id}
       id={event.id}
       title={event.title}
@@ -50,37 +55,94 @@ export default function ObservatoryPage() {
   );
 
   return (
-    <div className="h-full">
-      {/* Desktop: 3 columns */}
-      <div className="hidden md:grid md:grid-cols-3 gap-4 h-full">
-        <Lane title="Hacker News" icon={<span className="text-orange-500">🔶</span>} count={hnEvents.length} isLoading={isLoading}>
-          {hnEvents.length > 0 ? hnEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema HN vijesti</p>}
-        </Lane>
-        <Lane title="GitHub" icon={<span>🐙</span>} count={ghEvents.length} isLoading={isLoading}>
-          {ghEvents.length > 0 ? ghEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema GitHub projekata</p>}
-        </Lane>
-        <Lane title="Radovi" icon={<span>📄</span>} count={arxivEvents.length} isLoading={isLoading}>
-          {arxivEvents.length > 0 ? arxivEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema radova</p>}
-        </Lane>
+    <div className="h-full flex flex-col gap-4 p-4">
+      {/* Status Bar */}
+      <StatusBar
+        eventCount={events.length}
+        lastUpdate={lastUpdate}
+        isLoading={isLoading}
+      />
+
+      {/* Top Row: Briefing + Stats (desktop only) */}
+      <div className="hidden md:grid md:grid-cols-2 gap-4" style={{ minHeight: "180px" }}>
+        <BriefingCard />
+        <StatsGrid
+          totalCount={events.length}
+          hnCount={hnEvents.length}
+          ghCount={ghEvents.length}
+          arxivCount={arxivEvents.length}
+        />
       </div>
 
-      {/* Mobile: Single lane */}
-      <div className="md:hidden h-full pb-20" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        {activeLane === "hn" && (
-          <Lane title="Hacker News" icon={<span className="text-orange-500">🔶</span>} count={hnEvents.length} isLoading={isLoading}>
-            {hnEvents.length > 0 ? hnEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema HN vijesti</p>}
-          </Lane>
-        )}
-        {activeLane === "github" && (
-          <Lane title="GitHub" icon={<span>🐙</span>} count={ghEvents.length} isLoading={isLoading}>
-            {ghEvents.length > 0 ? ghEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema GitHub projekata</p>}
-          </Lane>
-        )}
-        {activeLane === "arxiv" && (
-          <Lane title="Radovi" icon={<span>📄</span>} count={arxivEvents.length} isLoading={isLoading}>
-            {arxivEvents.length > 0 ? arxivEvents.map(renderEventCard) : <p className="text-muted-foreground text-sm p-2">Nema radova</p>}
-          </Lane>
-        )}
+      {/* News Lanes */}
+      <div className="flex-1 min-h-0">
+        {/* Desktop: 3 columns */}
+        <div className="hidden md:grid md:grid-cols-3 gap-4 h-full">
+          <NewsLane
+            title="Hacker News"
+            icon={<span className="text-orange-500">🔶</span>}
+            count={hnEvents.length}
+            accentColor="bg-orange-500/20 text-orange-400"
+            glowClass="glass-glow-orange"
+            isLoading={isLoading}
+            delay={0.4}
+          >
+            {hnEvents.length > 0 ? hnEvents.map(renderCard) : (
+              <p className="text-muted-foreground text-sm text-center py-8">Nema HN vijesti</p>
+            )}
+          </NewsLane>
+
+          <NewsLane
+            title="GitHub Trending"
+            icon={<span>🐙</span>}
+            count={ghEvents.length}
+            accentColor="bg-purple-500/20 text-purple-400"
+            glowClass="glass-glow-purple"
+            isLoading={isLoading}
+            delay={0.5}
+          >
+            {ghEvents.length > 0 ? ghEvents.map(renderCard) : (
+              <p className="text-muted-foreground text-sm text-center py-8">Nema GitHub projekata</p>
+            )}
+          </NewsLane>
+
+          <NewsLane
+            title="arXiv Radovi"
+            icon={<span>📄</span>}
+            count={arxivEvents.length}
+            accentColor="bg-green-500/20 text-green-400"
+            glowClass="glass-glow-green"
+            isLoading={isLoading}
+            delay={0.6}
+          >
+            {arxivEvents.length > 0 ? arxivEvents.map(renderCard) : (
+              <p className="text-muted-foreground text-sm text-center py-8">Nema radova</p>
+            )}
+          </NewsLane>
+        </div>
+
+        {/* Mobile: Single lane with swipe */}
+        <div
+          className="md:hidden h-full pb-20"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {activeLane === "hn" && (
+            <NewsLane title="Hacker News" icon="🔶" count={hnEvents.length} accentColor="bg-orange-500/20 text-orange-400" glowClass="" isLoading={isLoading}>
+              {hnEvents.length > 0 ? hnEvents.map(renderCard) : <p className="text-muted-foreground text-sm text-center py-8">Nema HN vijesti</p>}
+            </NewsLane>
+          )}
+          {activeLane === "github" && (
+            <NewsLane title="GitHub" icon="🐙" count={ghEvents.length} accentColor="bg-purple-500/20 text-purple-400" glowClass="" isLoading={isLoading}>
+              {ghEvents.length > 0 ? ghEvents.map(renderCard) : <p className="text-muted-foreground text-sm text-center py-8">Nema GitHub projekata</p>}
+            </NewsLane>
+          )}
+          {activeLane === "arxiv" && (
+            <NewsLane title="arXiv" icon="📄" count={arxivEvents.length} accentColor="bg-green-500/20 text-green-400" glowClass="" isLoading={isLoading}>
+              {arxivEvents.length > 0 ? arxivEvents.map(renderCard) : <p className="text-muted-foreground text-sm text-center py-8">Nema radova</p>}
+            </NewsLane>
+          )}
+        </div>
       </div>
     </div>
   );

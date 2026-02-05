@@ -3,29 +3,71 @@
 import { useMemo } from "react";
 import { trpc } from "@/trpc";
 import { useSelection } from "@/context/selection-context";
-import { useMobileLane, type LaneId } from "@/context/mobile-lane-context";
-import { useSwipe } from "@/hooks";
 import { StatusBar } from "@/components/cockpit/status-bar";
-import { NewsLane } from "@/components/cockpit/news-lane";
 import { BriefingCard } from "@/components/cockpit/briefing-card";
 import { StatsGrid } from "@/components/cockpit/stats-grid";
-import { CockpitEventCard } from "@/components/cockpit/cockpit-event-card";
+import { SourceSection } from "@/components/cockpit/source-section";
+import type { NormalizedEvent } from "@genai/shared";
 
-const lanes: LaneId[] = ["hn", "github", "arxiv"];
+// ============================================================================
+// SOURCE GROUP DEFINITIONS - 5 groups, 11 total sources
+// ============================================================================
+
+const SOURCE_GROUPS = [
+  {
+    title: "Vijesti",
+    icon: "📰",
+    glowClass: "glass-glow-red",
+    sources: [
+      { key: "NEWSAPI", label: "NewsAPI", icon: "📰", accentColor: "bg-red-500/20 text-red-400" },
+    ],
+  },
+  {
+    title: "Zajednica",
+    icon: "💬",
+    glowClass: "glass-glow-orange",
+    sources: [
+      { key: "HN", label: "Hacker News", icon: "🔶", accentColor: "bg-orange-500/20 text-orange-400" },
+      { key: "REDDIT", label: "Reddit", icon: "🤖", accentColor: "bg-orange-500/20 text-orange-300" },
+      { key: "LOBSTERS", label: "Lobsters", icon: "🦞", accentColor: "bg-red-500/20 text-red-300" },
+    ],
+  },
+  {
+    title: "Istraživanje",
+    icon: "🔬",
+    glowClass: "glass-glow-green",
+    sources: [
+      { key: "ARXIV", label: "arXiv", icon: "📄", accentColor: "bg-green-500/20 text-green-400" },
+      { key: "HUGGINGFACE", label: "HuggingFace", icon: "🤗", accentColor: "bg-yellow-500/20 text-yellow-400" },
+      { key: "LEADERBOARD", label: "Ljestvica", icon: "🏆", accentColor: "bg-yellow-500/20 text-yellow-300" },
+    ],
+  },
+  {
+    title: "Alati",
+    icon: "🛠",
+    glowClass: "glass-glow-purple",
+    sources: [
+      { key: "GITHUB", label: "GitHub", icon: "🐙", accentColor: "bg-purple-500/20 text-purple-400" },
+      { key: "DEVTO", label: "Dev.to", icon: "📝", accentColor: "bg-purple-500/20 text-purple-300" },
+      { key: "PRODUCTHUNT", label: "ProductHunt", icon: "🚀", accentColor: "bg-pink-500/20 text-pink-400" },
+    ],
+  },
+  {
+    title: "Video",
+    icon: "🎬",
+    glowClass: "glass-glow-cyan",
+    sources: [
+      { key: "YOUTUBE", label: "YouTube", icon: "▶", accentColor: "bg-cyan-500/20 text-cyan-400" },
+    ],
+  },
+] as const;
+
+// ============================================================================
+// MAIN PAGE COMPONENT
+// ============================================================================
 
 export default function ObservatoryPage() {
   const { selectedEvent, selectEvent } = useSelection();
-  const { activeLane, setActiveLane } = useMobileLane();
-
-  const currentIndex = lanes.indexOf(activeLane);
-  const { handleTouchStart, handleTouchEnd } = useSwipe({
-    onSwipeLeft: () => {
-      if (currentIndex < lanes.length - 1) setActiveLane(lanes[currentIndex + 1]);
-    },
-    onSwipeRight: () => {
-      if (currentIndex > 0) setActiveLane(lanes[currentIndex - 1]);
-    },
-  });
 
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 100,
@@ -33,29 +75,35 @@ export default function ObservatoryPage() {
 
   const events = eventsData?.items ?? [];
 
-  const hnEvents = useMemo(() => events.filter((e) => e.sourceType === "HN"), [events]);
-  const ghEvents = useMemo(() => events.filter((e) => e.sourceType === "GITHUB"), [events]);
-  const arxivEvents = useMemo(() => events.filter((e) => e.sourceType === "ARXIV"), [events]);
+  // Build source → events map
+  const eventsBySource = useMemo(() => {
+    const map = new Map<string, NormalizedEvent[]>();
+    for (const event of events) {
+      const existing = map.get(event.sourceType) ?? [];
+      existing.push(event);
+      map.set(event.sourceType, existing);
+    }
+    return map;
+  }, [events]);
+
+  // Calculate group counts for stats
+  const groupCounts = useMemo(() => {
+    const countFor = (keys: readonly string[]) =>
+      keys.reduce((sum, k) => sum + (eventsBySource.get(k)?.length ?? 0), 0);
+
+    return {
+      newsCount: countFor(["NEWSAPI"]),
+      communityCount: countFor(["HN", "REDDIT", "LOBSTERS"]),
+      researchCount: countFor(["ARXIV", "HUGGINGFACE", "LEADERBOARD"]),
+      toolsCount: countFor(["GITHUB", "DEVTO", "PRODUCTHUNT"]),
+      videoCount: countFor(["YOUTUBE"]),
+    };
+  }, [eventsBySource]);
 
   const lastUpdate = events.length > 0 ? new Date(events[0].occurredAt) : null;
 
-  const renderCard = (event: (typeof events)[0]) => (
-    <CockpitEventCard
-      key={event.id}
-      id={event.id}
-      title={event.title}
-      titleHr={event.titleHr}
-      occurredAt={event.occurredAt}
-      impactLevel={event.impactLevel}
-      sourceCount={event.sourceCount}
-      topics={event.topics}
-      isSelected={selectedEvent?.id === event.id}
-      onClick={() => selectEvent(event)}
-    />
-  );
-
   return (
-    <div className="h-full flex flex-col gap-4 p-4">
+    <div className="space-y-6 pb-8">
       {/* Status Bar */}
       <StatusBar
         eventCount={events.length}
@@ -63,87 +111,30 @@ export default function ObservatoryPage() {
         isLoading={isLoading}
       />
 
-      {/* Top Row: Briefing + Stats (desktop only) */}
-      <div className="hidden md:grid md:grid-cols-2 gap-4" style={{ minHeight: "180px" }}>
+      {/* Top Row: Briefing + Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ minHeight: "160px" }}>
         <BriefingCard />
         <StatsGrid
           totalCount={events.length}
-          hnCount={hnEvents.length}
-          ghCount={ghEvents.length}
-          arxivCount={arxivEvents.length}
+          {...groupCounts}
         />
       </div>
 
-      {/* News Lanes */}
-      <div className="flex-1 min-h-0">
-        {/* Desktop: 3 columns */}
-        <div className="hidden md:grid md:grid-cols-3 gap-4 h-full">
-          <NewsLane
-            title="Hacker News"
-            icon={<span className="text-orange-500">🔶</span>}
-            count={hnEvents.length}
-            accentColor="bg-orange-500/20 text-orange-400"
-            glowClass="glass-glow-orange"
-            isLoading={isLoading}
-            delay={0.4}
-          >
-            {hnEvents.length > 0 ? hnEvents.map(renderCard) : (
-              <p className="text-muted-foreground text-sm text-center py-8">Nema HN vijesti</p>
-            )}
-          </NewsLane>
-
-          <NewsLane
-            title="GitHub Trending"
-            icon={<span>🐙</span>}
-            count={ghEvents.length}
-            accentColor="bg-purple-500/20 text-purple-400"
-            glowClass="glass-glow-purple"
-            isLoading={isLoading}
-            delay={0.5}
-          >
-            {ghEvents.length > 0 ? ghEvents.map(renderCard) : (
-              <p className="text-muted-foreground text-sm text-center py-8">Nema GitHub projekata</p>
-            )}
-          </NewsLane>
-
-          <NewsLane
-            title="arXiv Radovi"
-            icon={<span>📄</span>}
-            count={arxivEvents.length}
-            accentColor="bg-green-500/20 text-green-400"
-            glowClass="glass-glow-green"
-            isLoading={isLoading}
-            delay={0.6}
-          >
-            {arxivEvents.length > 0 ? arxivEvents.map(renderCard) : (
-              <p className="text-muted-foreground text-sm text-center py-8">Nema radova</p>
-            )}
-          </NewsLane>
-        </div>
-
-        {/* Mobile: Single lane with swipe */}
-        <div
-          className="md:hidden h-full pb-20"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {activeLane === "hn" && (
-            <NewsLane title="Hacker News" icon="🔶" count={hnEvents.length} accentColor="bg-orange-500/20 text-orange-400" glowClass="" isLoading={isLoading}>
-              {hnEvents.length > 0 ? hnEvents.map(renderCard) : <p className="text-muted-foreground text-sm text-center py-8">Nema HN vijesti</p>}
-            </NewsLane>
-          )}
-          {activeLane === "github" && (
-            <NewsLane title="GitHub" icon="🐙" count={ghEvents.length} accentColor="bg-purple-500/20 text-purple-400" glowClass="" isLoading={isLoading}>
-              {ghEvents.length > 0 ? ghEvents.map(renderCard) : <p className="text-muted-foreground text-sm text-center py-8">Nema GitHub projekata</p>}
-            </NewsLane>
-          )}
-          {activeLane === "arxiv" && (
-            <NewsLane title="arXiv" icon="📄" count={arxivEvents.length} accentColor="bg-green-500/20 text-green-400" glowClass="" isLoading={isLoading}>
-              {arxivEvents.length > 0 ? arxivEvents.map(renderCard) : <p className="text-muted-foreground text-sm text-center py-8">Nema radova</p>}
-            </NewsLane>
-          )}
-        </div>
-      </div>
+      {/* Source Sections - all in one scrollable column */}
+      {SOURCE_GROUPS.map((group, i) => (
+        <SourceSection
+          key={group.title}
+          title={group.title}
+          icon={group.icon}
+          glowClass={group.glowClass}
+          sources={[...group.sources]}
+          eventsBySource={eventsBySource}
+          selectedEventId={selectedEvent?.id}
+          onSelectEvent={selectEvent}
+          isLoading={isLoading}
+          delay={0.2 + i * 0.1}
+        />
+      ))}
     </div>
   );
 }

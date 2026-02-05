@@ -8,17 +8,7 @@ import { trpc } from "@/trpc";
 import { EventsTimeline } from "@/components/entity/events-timeline";
 import { RelatedEntities } from "@/components/entity/related-entities";
 import { EntityGraph } from "@/components/entity/entity-graph";
-
-const typeConfig: Record<string, { icon: string; color: string }> = {
-  COMPANY: { icon: "🏢", color: "bg-blue-500" },
-  LAB: { icon: "🔬", color: "bg-purple-500" },
-  MODEL: { icon: "🤖", color: "bg-green-500" },
-  PRODUCT: { icon: "📦", color: "bg-orange-500" },
-  PERSON: { icon: "👤", color: "bg-pink-500" },
-  REGULATION: { icon: "📜", color: "bg-red-500" },
-  DATASET: { icon: "📊", color: "bg-cyan-500" },
-  BENCHMARK: { icon: "📈", color: "bg-yellow-500" },
-};
+import { getTypeConfig } from "@/components/entity/type-config";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -37,7 +27,7 @@ export default function EntityDossierPage({ params }: PageProps) {
     notFound();
   }
 
-  const config = typeConfig[entity.type] || { icon: "❓", color: "bg-gray-500" };
+  const config = getTypeConfig(entity.type);
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
@@ -54,7 +44,7 @@ export default function EntityDossierPage({ params }: PageProps) {
       <header className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <span
-            className={`${config.color} text-white px-2 py-1 rounded text-sm`}
+            className={`${config.bgColor} text-white px-2 py-1 rounded text-sm`}
           >
             {config.icon} {entity.type}
           </span>

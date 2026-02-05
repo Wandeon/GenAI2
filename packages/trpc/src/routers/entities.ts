@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EntityType } from "@genai/db";
+import { EntityType, RelationType } from "@genai/db";
 import { router, publicProcedure } from "../trpc";
 
 export const entitiesRouter = router({
@@ -135,6 +135,8 @@ export const entitiesRouter = router({
       z.object({
         entityId: z.string(),
         maxNodes: z.number().min(10).max(100).default(30),
+        entityTypes: z.array(z.nativeEnum(EntityType)).optional(),
+        relationshipTypes: z.array(z.nativeEnum(RelationType)).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -142,15 +144,18 @@ export const entitiesRouter = router({
         where: {
           OR: [{ sourceId: input.entityId }, { targetId: input.entityId }],
           status: "APPROVED",
+          ...(input.relationshipTypes
+            ? { type: { in: input.relationshipTypes } }
+            : {}),
         },
-        include: {
-          source: true,
-          target: true,
-        },
+        include: { source: true, target: true },
         take: input.maxNodes,
       });
 
-      const nodesMap = new Map<string, (typeof relationships)[0]["source"]>();
+      const nodesMap = new Map<
+        string,
+        (typeof relationships)[number]["source"]
+      >();
       const links: Array<{ source: string; target: string; type: string }> = [];
 
       for (const rel of relationships) {
@@ -163,13 +168,24 @@ export const entitiesRouter = router({
         });
       }
 
-      const nodes = [...nodesMap.values()].map((e) => ({
-        id: e.id,
-        name: e.name,
-        type: e.type,
-        slug: e.slug,
-      }));
+      // Apply entity type filter client-side (both nodes must pass)
+      const typeFilter = input.entityTypes;
+      const nodes = [...nodesMap.values()]
+        .filter((e) =>
+          e.id === input.entityId || !typeFilter || typeFilter.includes(e.type)
+        )
+        .map((e) => ({
+          id: e.id,
+          name: e.name,
+          type: e.type,
+          slug: e.slug,
+        }));
 
-      return { nodes, links };
+      const nodeIds = new Set(nodes.map((n) => n.id));
+      const filteredLinks = links.filter(
+        (l) => nodeIds.has(l.source) && nodeIds.has(l.target)
+      );
+
+      return { nodes, links: filteredLinks };
     }),
 });

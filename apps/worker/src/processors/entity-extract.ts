@@ -71,96 +71,112 @@ export async function extractEntities(
 
   log(`Starting entity extraction for event ${eventId}`);
 
-  return prisma.$transaction(async (tx) => {
-    // Load event with evidence
-    const event = (await tx.event.findUnique({
-      where: { id: eventId },
-      include: {
-        evidence: {
-          include: {
-            snapshot: true,
-          },
+  // Load event with evidence (outside transaction - read-only)
+  const event = (await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      evidence: {
+        include: {
+          snapshot: true,
         },
       },
-    })) as EventWithEvidence | null;
+    },
+  })) as EventWithEvidence | null;
 
-    // Check if event exists
-    if (!event) {
-      log(`Event ${eventId} not found`);
-      return {
-        success: false,
-        eventId,
-        entitiesExtracted: 0,
-        error: `Event ${eventId} not found`,
-      };
+  // Check if event exists
+  if (!event) {
+    log(`Event ${eventId} not found`);
+    return {
+      success: false,
+      eventId,
+      entitiesExtracted: 0,
+      error: `Event ${eventId} not found`,
+    };
+  }
+
+  // Check status - only process ENRICHED events
+  if (event.status !== "ENRICHED") {
+    log(`Event ${eventId} not in ENRICHED status (current: ${event.status}), skipping`);
+    return {
+      success: true,
+      eventId,
+      entitiesExtracted: 0,
+      skipped: true,
+      skipReason: `Event not in ENRICHED status (current: ${event.status})`,
+    };
+  }
+
+  // Build evidence context
+  const evidenceText = buildEvidenceText(event.evidence);
+
+  // Build prompt
+  const prompt = ENTITY_EXTRACT_PROMPT(event.title, evidenceText);
+  const promptHash = hashString(prompt);
+  const inputHash = hashString(evidenceText);
+
+  // Call LLM and measure latency (outside transaction - slow I/O)
+  log(`Calling LLM to extract entities for event ${eventId}`);
+  const startTime = Date.now();
+  let response: LLMResponse;
+  try {
+    response = await client.complete(prompt);
+  } catch (error) {
+    log(`LLM call failed for entity extraction: ${error}`);
+    throw error;
+  }
+  const latencyMs = Date.now() - startTime;
+
+  // Parse and validate response
+  let payload: EntityExtractPayload;
+  try {
+    // Extract JSON from response (handle potential markdown code blocks)
+    let jsonStr = response.content.trim();
+    if (jsonStr.startsWith("```json")) {
+      jsonStr = jsonStr.slice(7);
     }
+    if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith("```")) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
 
-    // Check status - only process ENRICHED events
-    if (event.status !== "ENRICHED") {
-      log(`Event ${eventId} not in ENRICHED status (current: ${event.status}), skipping`);
+    const parsed = JSON.parse(jsonStr);
+    payload = EntityExtractPayload.parse(parsed);
+  } catch (error) {
+    log(`Failed to parse entity extraction response: ${error}`);
+    throw new Error(
+      `Failed to parse entity extraction response: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  // Calculate cost
+  const costCents = calculateCost(
+    client.provider,
+    response.usage.inputTokens,
+    response.usage.outputTokens
+  );
+
+  // Generate run ID for linking artifact to LLM run
+  const runId = crypto.randomUUID();
+
+  // Write all results in a single fast transaction (DB writes only)
+  return prisma.$transaction(async (tx) => {
+    // Re-check status inside transaction to prevent races
+    const current = await tx.event.findUnique({
+      where: { id: eventId },
+      select: { status: true },
+    });
+    if (current?.status !== "ENRICHED") {
       return {
         success: true,
         eventId,
         entitiesExtracted: 0,
         skipped: true,
-        skipReason: `Event not in ENRICHED status (current: ${event.status})`,
+        skipReason: `Event status changed to ${current?.status} during extraction`,
       };
     }
-
-    // Build evidence context
-    const evidenceText = buildEvidenceText(event.evidence);
-
-    // Build prompt
-    const prompt = ENTITY_EXTRACT_PROMPT(event.title, evidenceText);
-    const promptHash = hashString(prompt);
-    const inputHash = hashString(evidenceText);
-
-    // Call LLM and measure latency
-    log(`Calling LLM to extract entities for event ${eventId}`);
-    const startTime = Date.now();
-    let response: LLMResponse;
-    try {
-      response = await client.complete(prompt);
-    } catch (error) {
-      log(`LLM call failed for entity extraction: ${error}`);
-      throw error;
-    }
-    const latencyMs = Date.now() - startTime;
-
-    // Parse and validate response
-    let payload: EntityExtractPayload;
-    try {
-      // Extract JSON from response (handle potential markdown code blocks)
-      let jsonStr = response.content.trim();
-      if (jsonStr.startsWith("```json")) {
-        jsonStr = jsonStr.slice(7);
-      }
-      if (jsonStr.startsWith("```")) {
-        jsonStr = jsonStr.slice(3);
-      }
-      if (jsonStr.endsWith("```")) {
-        jsonStr = jsonStr.slice(0, -3);
-      }
-      jsonStr = jsonStr.trim();
-
-      const parsed = JSON.parse(jsonStr);
-      payload = EntityExtractPayload.parse(parsed);
-    } catch (error) {
-      log(`Failed to parse entity extraction response: ${error}`);
-      throw new Error(
-        `Failed to parse entity extraction response: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-
-    // Calculate cost
-    const costCents = calculateCost(
-      client.provider,
-      response.usage.inputTokens,
-      response.usage.outputTokens
-    );
-
-    // Generate run ID for linking artifact to LLM run
-    const runId = crypto.randomUUID();
 
     // Create LLM run record
     await tx.lLMRun.create({

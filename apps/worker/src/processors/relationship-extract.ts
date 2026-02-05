@@ -100,118 +100,138 @@ export async function extractRelationships(
 
   log(`Starting relationship extraction for event ${eventId}`);
 
-  return prisma.$transaction(async (tx) => {
-    // Load event with mentions and evidence
-    const event = (await tx.event.findUnique({
-      where: { id: eventId },
-      include: {
-        evidence: {
-          include: {
-            snapshot: {
-              include: {
-                source: true,
-              },
+  // Load event with mentions and evidence (outside transaction - read-only)
+  const event = (await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      evidence: {
+        include: {
+          snapshot: {
+            include: {
+              source: true,
             },
           },
         },
-        mentions: {
-          include: {
-            entity: true,
-          },
+      },
+      mentions: {
+        include: {
+          entity: true,
         },
       },
-    })) as EventWithEntities | null;
+    },
+  })) as EventWithEntities | null;
 
-    // Check if event exists
-    if (!event) {
-      log(`Event ${eventId} not found`);
-      return {
-        success: false,
-        eventId,
-        relationshipsExtracted: 0,
-        error: `Event ${eventId} not found`,
-      };
+  // Check if event exists
+  if (!event) {
+    log(`Event ${eventId} not found`);
+    return {
+      success: false,
+      eventId,
+      relationshipsExtracted: 0,
+      error: `Event ${eventId} not found`,
+    };
+  }
+
+  // Check status - only process ENRICHED events
+  if (event.status !== "ENRICHED") {
+    log(`Event ${eventId} not in ENRICHED status (current: ${event.status}), skipping`);
+    return {
+      success: true,
+      eventId,
+      relationshipsExtracted: 0,
+      skipped: true,
+      skipReason: `Event not in ENRICHED status (current: ${event.status})`,
+    };
+  }
+
+  // Check if we have enough entities
+  if (event.mentions.length < 2) {
+    log(`Event ${eventId} has fewer than 2 entities, skipping relationship extraction`);
+    return {
+      success: true,
+      eventId,
+      relationshipsExtracted: 0,
+      skipped: true,
+      skipReason: "Fewer than 2 entities - no relationships possible",
+    };
+  }
+
+  // Build context for LLM
+  const evidenceText = buildEvidenceText(event.evidence);
+  const entityList = buildEntityList(event.mentions);
+
+  // Build prompt
+  const prompt = RELATIONSHIP_EXTRACT_PROMPT(event.title, evidenceText, entityList);
+  const promptHash = hashString(prompt);
+  const inputHash = hashString(evidenceText + entityList);
+
+  // Call LLM and measure latency (outside transaction - slow I/O)
+  log(`Calling LLM to extract relationships for event ${eventId}`);
+  const startTime = Date.now();
+  let response: LLMResponse;
+  try {
+    response = await client.complete(prompt);
+  } catch (error) {
+    log(`LLM call failed for relationship extraction: ${error}`);
+    throw error;
+  }
+  const latencyMs = Date.now() - startTime;
+
+  // Parse and validate response
+  let payload: { relationships: ExtractedRelationship[] };
+  try {
+    // Extract JSON from response (handle potential markdown code blocks)
+    let jsonStr = response.content.trim();
+    if (jsonStr.startsWith("```json")) {
+      jsonStr = jsonStr.slice(7);
     }
-
-    // Check status - only process ENRICHED events
-    if (event.status !== "ENRICHED") {
-      log(`Event ${eventId} not in ENRICHED status (current: ${event.status}), skipping`);
-      return {
-        success: true,
-        eventId,
-        relationshipsExtracted: 0,
-        skipped: true,
-        skipReason: `Event not in ENRICHED status (current: ${event.status})`,
-      };
+    if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.slice(3);
     }
-
-    // Check if we have enough entities
-    if (event.mentions.length < 2) {
-      log(`Event ${eventId} has fewer than 2 entities, skipping relationship extraction`);
-      return {
-        success: true,
-        eventId,
-        relationshipsExtracted: 0,
-        skipped: true,
-        skipReason: "Fewer than 2 entities - no relationships possible",
-      };
+    if (jsonStr.endsWith("```")) {
+      jsonStr = jsonStr.slice(0, -3);
     }
+    jsonStr = jsonStr.trim();
 
-    // Build context for LLM
-    const evidenceText = buildEvidenceText(event.evidence);
-    const entityList = buildEntityList(event.mentions);
-
-    // Build prompt
-    const prompt = RELATIONSHIP_EXTRACT_PROMPT(event.title, evidenceText, entityList);
-    const promptHash = hashString(prompt);
-    const inputHash = hashString(evidenceText + entityList);
-
-    // Call LLM and measure latency
-    log(`Calling LLM to extract relationships for event ${eventId}`);
-    const startTime = Date.now();
-    let response: LLMResponse;
-    try {
-      response = await client.complete(prompt);
-    } catch (error) {
-      log(`LLM call failed for relationship extraction: ${error}`);
-      throw error;
-    }
-    const latencyMs = Date.now() - startTime;
-
-    // Parse and validate response
-    let payload: { relationships: ExtractedRelationship[] };
-    try {
-      // Extract JSON from response (handle potential markdown code blocks)
-      let jsonStr = response.content.trim();
-      if (jsonStr.startsWith("```json")) {
-        jsonStr = jsonStr.slice(7);
-      }
-      if (jsonStr.startsWith("```")) {
-        jsonStr = jsonStr.slice(3);
-      }
-      if (jsonStr.endsWith("```")) {
-        jsonStr = jsonStr.slice(0, -3);
-      }
-      jsonStr = jsonStr.trim();
-
-      const parsed = JSON.parse(jsonStr);
-      payload = RelationshipExtractPayload.parse(parsed);
-    } catch (error) {
-      log(`Failed to parse relationship extraction response: ${error}`);
-      throw new Error(
-        `Failed to parse relationship extraction response: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-
-    // Calculate cost
-    const costCents = calculateCost(
-      client.provider,
-      response.usage.inputTokens,
-      response.usage.outputTokens
+    const parsed = JSON.parse(jsonStr);
+    payload = RelationshipExtractPayload.parse(parsed);
+  } catch (error) {
+    log(`Failed to parse relationship extraction response: ${error}`);
+    throw new Error(
+      `Failed to parse relationship extraction response: ${error instanceof Error ? error.message : String(error)}`
     );
+  }
 
-    // Generate run ID for linking artifact to LLM run
-    const runId = crypto.randomUUID();
+  // Calculate cost
+  const costCents = calculateCost(
+    client.provider,
+    response.usage.inputTokens,
+    response.usage.outputTokens
+  );
+
+  // Generate run ID for linking artifact to LLM run
+  const runId = crypto.randomUUID();
+
+  // Get safety context (computed from read data, no DB needed)
+  const trustTier = getHighestTrustTier(event);
+  const sourceCount = event.evidence.length;
+
+  // Write all results in a single fast transaction (DB writes only)
+  return prisma.$transaction(async (tx) => {
+    // Re-check status inside transaction to prevent races
+    const current = await tx.event.findUnique({
+      where: { id: eventId },
+      select: { status: true },
+    });
+    if (current?.status !== "ENRICHED") {
+      return {
+        success: true,
+        eventId,
+        relationshipsExtracted: 0,
+        skipped: true,
+        skipReason: `Event status changed to ${current?.status} during extraction`,
+      };
+    }
 
     // Create LLM run record
     await tx.lLMRun.create({
@@ -231,9 +251,6 @@ export async function extractRelationships(
       },
     });
 
-    // Get safety context
-    const trustTier = getHighestTrustTier(event);
-    const sourceCount = event.evidence.length;
     const now = new Date();
 
     // Process each extracted relationship

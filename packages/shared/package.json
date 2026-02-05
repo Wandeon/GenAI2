@@ -8,6 +8,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./confidence": {
+      "types": "./src/confidence.ts",
+      "default": "./src/confidence.ts"
+    },
     "./schemas": {
       "types": "./src/schemas/index.ts",
       "default": "./src/schemas/index.ts"

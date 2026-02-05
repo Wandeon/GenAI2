@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   createContext,
   useContext,
   useState,
@@ -13,42 +14,30 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { trpc } from "@/trpc";
 
 interface SelectionContextValue {
-  // Currently selected event ID (from URL)
   selectedEventId: string | null;
-
-  // Full event detail (from byId query)
   eventDetail: any | null;
   isDetailLoading: boolean;
-
-  // Select an event (updates URL)
   selectEvent: (eventId: string) => void;
-
-  // Clear selection (removes URL param)
   clearSelection: () => void;
-
-  // Is context panel open on mobile?
   isContextOpen: boolean;
   setContextOpen: (open: boolean) => void;
 }
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
 
-export function SelectionProvider({ children }: { children: ReactNode }) {
+function SelectionProviderInner({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const [isContextOpen, setContextOpen] = useState(false);
 
-  // URL is the single source of truth
   const selectedEventId = searchParams.get("event");
 
-  // Fetch full event detail when ID is selected
   const { data: eventDetail, isLoading: isDetailLoading, error } = trpc.events.byId.useQuery(
     selectedEventId!,
     { enabled: !!selectedEventId }
   );
 
-  // Guard against invalid event IDs - clear param if event not found
   useEffect(() => {
     if (selectedEventId && !isDetailLoading && error) {
       const params = new URLSearchParams(searchParams.toString());
@@ -58,7 +47,6 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedEventId, isDetailLoading, error, searchParams, router, pathname]);
 
-  // Auto-open mobile panel when event selected
   useEffect(() => {
     if (selectedEventId) {
       setContextOpen(true);
@@ -99,6 +87,14 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     <SelectionContext.Provider value={value}>
       {children}
     </SelectionContext.Provider>
+  );
+}
+
+export function SelectionProvider({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <SelectionProviderInner>{children}</SelectionProviderInner>
+    </Suspense>
   );
 }
 

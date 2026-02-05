@@ -6,6 +6,7 @@ import {
   countUniqueSources,
   extractTopEntities,
   generateBriefingPrompt,
+  generateLegacyBriefingPrompt,
   parseJsonResponse,
 } from "../daily-briefing";
 import type { EventForBriefing } from "../daily-briefing.types";
@@ -47,6 +48,14 @@ const mockEvent: EventForBriefing = {
       artifactType: "SUMMARY",
       payload: { en: "OpenAI released GPT-5 today.", hr: "OpenAI je objavio GPT-5." },
     },
+    {
+      artifactType: "WHAT_HAPPENED",
+      payload: { en: "OpenAI released GPT-5 with 10x context window." },
+    },
+    {
+      artifactType: "WHY_MATTERS",
+      payload: { text: "Largest context window in production LLM." },
+    },
   ],
   evidence: [
     { snapshot: { source: { id: "source-1" } } },
@@ -80,7 +89,35 @@ const mockEvent2: EventForBriefing = {
   ],
 };
 
-const validBriefingPayload = {
+const validRoundtablePayload = {
+  roundtable: [
+    { persona: "GM" as const, moveType: "SETUP" as const, text: "Two major model launches today.", textHr: "Dva velika lansiranja modela danas." },
+    { persona: "Engineer" as const, moveType: "TECH_READ" as const, text: "GPT-5 ships with 10x context window at 128K tokens.", textHr: "GPT-5 dolazi s 10x kontekstnim prozorom od 128K tokena.", eventRef: 1 },
+    { persona: "Skeptic" as const, moveType: "RISK_CHECK" as const, text: "No independent benchmarks yet. OpenAI's own numbers are marketing.", textHr: "Nema neovisnih mjerila. OpenAI-jevi brojevi su marketing.", eventRef: 1 },
+    { persona: "Engineer" as const, moveType: "TECH_READ" as const, text: "Gemini 3 claims native multimodal from day one.", textHr: "Gemini 3 tvrdi nativnu multimodalnost od prvog dana.", eventRef: 2 },
+    { persona: "Skeptic" as const, moveType: "CROSS_EXAM" as const, text: "Same claim Google made with Gemini 1. Where are the API docs?", textHr: "Istu tvrdnju Google je dao s Gemini 1. Gdje su API dokumenti?", eventRef: 2 },
+    { persona: "GM" as const, moveType: "TAKEAWAY" as const, text: "Both launches need independent validation. Watch for benchmark drops this week.", textHr: "Oba lansiranja trebaju neovisnu provjeru. Pratite rezultate mjerila ovaj tjedan." },
+  ],
+  prediction: {
+    en: "Watch for benchmark comparisons",
+    hr: "Pratite usporedbe na testovima",
+    confidence: "medium" as const,
+    caveats: ["Early benchmarks may be incomplete"],
+  },
+  action: {
+    en: "Try GPT-5 API",
+    hr: "Isprobajte GPT-5 API",
+  },
+  gmNote: {
+    en: "Exciting competition!",
+    hr: "Uzbudljiva konkurencija!",
+  },
+  eventCount: 2,
+  sourceCount: 2,
+  topEntities: ["OpenAI", "Google"],
+};
+
+const legacyBriefingPayload = {
   changedSince: {
     en: "Major AI announcements today",
     hr: "Velike AI najave danas",
@@ -116,6 +153,23 @@ describe("daily-briefing utilities", () => {
       expect(result).toContain("1. OpenAI Launches GPT-5");
       expect(result).toContain("OpenAI released GPT-5 today.");
       expect(result).toContain("Entities: OpenAI, GPT-5");
+    });
+
+    it("includes WHAT_HAPPENED when present", () => {
+      const result = buildEventsText([mockEvent]);
+      expect(result).toContain("What happened: OpenAI released GPT-5 with 10x context window.");
+    });
+
+    it("includes WHY_MATTERS when present", () => {
+      const result = buildEventsText([mockEvent]);
+      expect(result).toContain("Why it matters: Largest context window in production LLM.");
+    });
+
+    it("handles events without WHAT_HAPPENED or WHY_MATTERS gracefully", () => {
+      const result = buildEventsText([mockEvent2]);
+      expect(result).not.toContain("What happened:");
+      expect(result).not.toContain("Why it matters:");
+      expect(result).toContain("1. Google Announces Gemini 3");
     });
 
     it("handles events without artifacts", () => {
@@ -179,17 +233,40 @@ describe("daily-briefing utilities", () => {
       expect(prompt).toContain("Test events");
     });
 
-    it("includes GM identity", () => {
+    it("includes persona definitions", () => {
       const prompt = generateBriefingPrompt("events", "2026-02-04");
+      expect(prompt).toContain("GM (Host)");
+      expect(prompt).toContain("Engineer");
+      expect(prompt).toContain("Skeptic");
+    });
+
+    it("includes move type definitions", () => {
+      const prompt = generateBriefingPrompt("events", "2026-02-04");
+      expect(prompt).toContain("SETUP");
+      expect(prompt).toContain("TECH_READ");
+      expect(prompt).toContain("RISK_CHECK");
+      expect(prompt).toContain("CROSS_EXAM");
+      expect(prompt).toContain("EVIDENCE_CALL");
+      expect(prompt).toContain("TAKEAWAY");
+    });
+
+    it("includes roundtable in output format", () => {
+      const prompt = generateBriefingPrompt("events", "2026-02-04");
+      expect(prompt).toContain("roundtable");
+    });
+  });
+
+  describe("generateLegacyBriefingPrompt", () => {
+    it("includes GM identity", () => {
+      const prompt = generateLegacyBriefingPrompt("events", "2026-02-04");
       expect(prompt).toContain("You are GM");
       expect(prompt).toContain("Croatian audiences");
     });
 
-    it("includes required JSON format", () => {
-      const prompt = generateBriefingPrompt("events", "2026-02-04");
+    it("includes changedSince in output format", () => {
+      const prompt = generateLegacyBriefingPrompt("events", "2026-02-04");
       expect(prompt).toContain("changedSince");
       expect(prompt).toContain("prediction");
-      expect(prompt).toContain("confidence");
     });
   });
 
@@ -229,7 +306,7 @@ describe("generateDailyBriefing", () => {
       provider: "google",
       model: "gemini-2.0-flash",
       complete: vi.fn().mockResolvedValue({
-        content: JSON.stringify(validBriefingPayload),
+        content: JSON.stringify(validRoundtablePayload),
         usage: {
           inputTokens: 1000,
           outputTokens: 500,
@@ -286,12 +363,38 @@ describe("generateDailyBriefing", () => {
     expect(result.eventCount).toBe(1);
   });
 
-  it("handles invalid LLM response gracefully", async () => {
+  it("falls back to legacy when roundtable parse fails", async () => {
     vi.mocked(prisma.dailyBriefing.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.event.findMany).mockResolvedValue([mockEvent] as never);
-    mockLLMClient.complete = vi.fn().mockResolvedValue({
-      content: "invalid json",
-      usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+
+    // First call returns invalid roundtable, second returns legacy
+    let callCount = 0;
+    mockLLMClient.complete = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          content: JSON.stringify({ ...legacyBriefingPayload }),
+          usage: { inputTokens: 500, outputTokens: 250, totalTokens: 750 },
+        });
+      }
+      return Promise.resolve({
+        content: JSON.stringify(legacyBriefingPayload),
+        usage: { inputTokens: 500, outputTokens: 250, totalTokens: 750 },
+      });
+    });
+
+    // Mock transaction
+    vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+      const txMock = {
+        lLMRun: { create: vi.fn() },
+        dailyBriefing: {
+          create: vi.fn().mockResolvedValue({
+            id: "fallback-briefing-id",
+            date: new Date("2026-02-04"),
+          }),
+        },
+      };
+      return (callback as unknown as (tx: typeof txMock) => Promise<unknown>)(txMock);
     });
 
     const result = await generateDailyBriefing(
@@ -299,11 +402,11 @@ describe("generateDailyBriefing", () => {
       mockLLMClient
     );
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Parse error");
+    expect(result.success).toBe(true);
+    expect(mockLLMClient.complete).toHaveBeenCalledTimes(2);
   });
 
-  it("generates briefing successfully with events", async () => {
+  it("generates briefing successfully with roundtable", async () => {
     vi.mocked(prisma.dailyBriefing.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.event.findMany).mockResolvedValue([mockEvent, mockEvent2] as never);
 
@@ -329,7 +432,7 @@ describe("generateDailyBriefing", () => {
     expect(result.success).toBe(true);
     expect(result.briefingId).toBe("new-briefing-id");
     expect(result.eventCount).toBe(2);
-    expect(mockLLMClient.complete).toHaveBeenCalled();
+    expect(mockLLMClient.complete).toHaveBeenCalledTimes(1);
   });
 
   it("creates LLM run record for cost tracking", async () => {
@@ -360,5 +463,23 @@ describe("generateDailyBriefing", () => {
         }),
       })
     );
+  });
+
+  it("handles both roundtable and legacy parse failures", async () => {
+    vi.mocked(prisma.dailyBriefing.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.event.findMany).mockResolvedValue([mockEvent] as never);
+    mockLLMClient.complete = vi.fn().mockResolvedValue({
+      content: "invalid json",
+      usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+    });
+
+    const result = await generateDailyBriefing(
+      { date: "2026-02-04" },
+      mockLLMClient
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Parse error");
+    expect(mockLLMClient.complete).toHaveBeenCalledTimes(2);
   });
 });

@@ -19,9 +19,12 @@ import {
   buildEventsText,
   countUniqueSources,
   extractTopEntities,
-  generateBriefingPrompt,
   parseJsonResponse,
 } from "./daily-briefing.utils";
+import {
+  generateBriefingPrompt,
+  generateLegacyBriefingPrompt,
+} from "./daily-briefing.prompts";
 
 // Re-export types for external consumers
 export type {
@@ -35,9 +38,14 @@ export {
   buildEventsText,
   countUniqueSources,
   extractTopEntities,
-  generateBriefingPrompt,
   parseJsonResponse,
 } from "./daily-briefing.utils";
+
+// Re-export prompts for tests
+export {
+  generateBriefingPrompt,
+  generateLegacyBriefingPrompt,
+} from "./daily-briefing.prompts";
 
 // ============================================================================
 // DAILY BRIEFING PROCESSOR
@@ -50,8 +58,8 @@ export {
 // #9: OBSERVABILITY BUILT-IN - Every call logs model, tokens, cost, latency
 //
 // LLM Cost Estimate:
-// - Expected cost per briefing: ~$0.05 (10 events context)
-// - Expected daily cost: ~$0.05 (1 briefing/day)
+// - Expected cost per briefing: ~$0.04-0.06 (10 events context)
+// - Expected daily cost: ~$0.06 (1 briefing/day, fallback = 2 calls max)
 // - Mitigation: Cron job runs once at 05:00 UTC only
 
 // ============================================================================
@@ -64,7 +72,7 @@ export {
  * This function:
  * 1. Checks if briefing already exists for the date
  * 2. Loads top 10 published events from that day
- * 3. Generates GM commentary via LLM
+ * 3. Generates Council Roundtable via LLM (falls back to legacy format)
  * 4. Creates DailyBriefing record with linked items
  *
  * @param input - The briefing input with date
@@ -116,7 +124,11 @@ export async function generateDailyBriefing(
     },
     include: {
       artifacts: {
-        where: { artifactType: { in: ["HEADLINE", "SUMMARY"] } },
+        where: {
+          artifactType: {
+            in: ["HEADLINE", "SUMMARY", "WHAT_HAPPENED", "WHY_MATTERS"],
+          },
+        },
       },
       evidence: {
         include: { snapshot: { include: { source: true } } },
@@ -146,7 +158,7 @@ export async function generateDailyBriefing(
   const sourceCount = countUniqueSources(events);
   const topEntities = extractTopEntities(events, 5);
 
-  // Generate briefing via LLM
+  // Generate briefing via LLM — roundtable first, legacy fallback
   const prompt = generateBriefingPrompt(eventsText, date);
   const promptHash = hashString(prompt);
   const inputHash = hashString(eventsText);
@@ -165,18 +177,46 @@ export async function generateDailyBriefing(
   }
   const latencyMs = Date.now() - startTime;
 
-  // Parse and validate response
+  // Parse and validate response — with legacy fallback
   let payload: DailyBriefingPayload;
   try {
     const parsed = parseJsonResponse(response.content);
     payload = DailyBriefingPayload.parse(parsed);
-  } catch (error) {
-    log(`Failed to parse response: ${error}`);
-    return {
-      success: false,
-      eventCount: events.length,
-      error: `Parse error: ${error}`,
-    };
+    if (!payload.roundtable || payload.roundtable.length < 4) {
+      throw new Error("Roundtable too short or missing");
+    }
+  } catch (roundtableError) {
+    log(`Roundtable parse failed: ${roundtableError}, falling back to legacy`);
+
+    const legacyPrompt = generateLegacyBriefingPrompt(eventsText, date);
+    let legacyResponse: LLMResponse;
+    try {
+      legacyResponse = await client.complete(legacyPrompt);
+    } catch (error) {
+      log(`Legacy LLM call also failed: ${error}`);
+      return {
+        success: false,
+        eventCount: events.length,
+        error: `LLM call failed: ${error}`,
+      };
+    }
+
+    try {
+      const legacyParsed = parseJsonResponse(legacyResponse.content);
+      payload = DailyBriefingPayload.parse(legacyParsed);
+    } catch (legacyError) {
+      log(`Legacy parse also failed: ${legacyError}`);
+      return {
+        success: false,
+        eventCount: events.length,
+        error: `Parse error: ${legacyError}`,
+      };
+    }
+
+    // Accumulate token usage from fallback call
+    response.usage.inputTokens += legacyResponse.usage.inputTokens;
+    response.usage.outputTokens += legacyResponse.usage.outputTokens;
+    response.usage.totalTokens += legacyResponse.usage.totalTokens;
   }
 
   // Ensure metadata is accurate

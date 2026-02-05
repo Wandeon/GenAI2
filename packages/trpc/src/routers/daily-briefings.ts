@@ -97,8 +97,9 @@ export const dailyBriefingsRouter = router({
         include: {
           artifacts: {
             where: {
-              artifactType: { in: ["HEADLINE", "SUMMARY", "GM_TAKE"] },
+              artifactType: { in: ["HEADLINE", "SUMMARY", "GM_TAKE", "WHY_MATTERS", "WHAT_HAPPENED"] },
             },
+            orderBy: { version: "desc" },
           },
           evidence: {
             include: { snapshot: { include: { source: true } } },

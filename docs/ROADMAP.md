@@ -1,5 +1,7 @@
 # Roadmap
 
+For the detailed north-star execution plan with sprint gates and documentation deliverables, see [`docs/NORTH_STAR_ROADMAP.md`](./NORTH_STAR_ROADMAP.md).
+
 GenAI Observatory implementation roadmap following the **Wow Slice First** approach.
 
 ---

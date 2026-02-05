@@ -7,7 +7,7 @@
 import type { EventForBriefing } from "./daily-briefing.types";
 
 export const PROCESSOR_NAME = "daily-briefing";
-export const PROMPT_VERSION = "2.0.0";
+export const PROMPT_VERSION = "3.0.0";
 
 /**
  * Tagged logger for daily-briefing processor.

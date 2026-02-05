@@ -2,9 +2,10 @@ import crypto from "crypto";
 import type { Job, ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import { prisma } from "@genai/db";
-import type { LLMClient, LLMResponse } from "@genai/llm";
+import type { LLMClient, LLMResponse, LLMUsage } from "@genai/llm";
 import { calculateGeminiCost, hashString } from "@genai/llm";
 import { DailyBriefingPayload } from "@genai/shared/schemas/daily-briefing";
+import type { DailyBriefingPayload as DailyBriefingPayloadT } from "@genai/shared/schemas/daily-briefing";
 
 // Local imports
 import type {
@@ -25,6 +26,7 @@ import {
   generateBriefingPrompt,
   generateLegacyBriefingPrompt,
 } from "./daily-briefing.prompts";
+import { generateEpisode } from "./daily-briefing.cast";
 
 // Re-export types for external consumers
 export type {
@@ -158,37 +160,74 @@ export async function generateDailyBriefing(
   const sourceCount = countUniqueSources(events);
   const topEntities = extractTopEntities(events, 5);
 
-  // Generate briefing via LLM — roundtable first, legacy fallback
-  const prompt = generateBriefingPrompt(eventsText, date);
-  const promptHash = hashString(prompt);
+  // 3-tier generation: Director/Cast → single-call roundtable → legacy
   const inputHash = hashString(eventsText);
-
   const startTime = Date.now();
-  let response: LLMResponse;
-  try {
-    response = await client.complete(prompt);
-  } catch (error) {
-    log(`LLM call failed: ${error}`);
-    return {
-      success: false,
-      eventCount: events.length,
-      error: `LLM call failed: ${error}`,
-    };
-  }
-  const latencyMs = Date.now() - startTime;
+  let payload: DailyBriefingPayloadT;
+  let totalUsage: LLMUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  let processorTag = PROCESSOR_NAME;
+  let promptHash = inputHash;
 
-  // Parse and validate response — with legacy fallback
-  let payload: DailyBriefingPayload;
-  try {
-    const parsed = parseJsonResponse(response.content);
-    payload = DailyBriefingPayload.parse(parsed);
-    if (!payload.roundtable || payload.roundtable.length < 4) {
-      throw new Error("Roundtable too short or missing");
+  // === Tier 1: Director/Cast multi-turn ===
+  if (client.chat) {
+    try {
+      const episode = await generateEpisode({ client, events, eventsText, date });
+
+      // Build payload with roundtable from episode + placeholder metadata
+      payload = DailyBriefingPayload.parse({
+        roundtable: episode.roundtable,
+        prediction: { en: "See roundtable discussion above.", hr: "Pogledajte raspravu iznad.", confidence: "medium" as const },
+        eventCount: events.length,
+        sourceCount: sourceCount,
+        topEntities,
+      });
+
+      totalUsage = episode.totalUsage;
+      processorTag = "daily-briefing/cast";
+      promptHash = hashString("director-cast-v3");
+      log(`Director/Cast produced ${episode.roundtable.length} turns in ${episode.turnCount} calls`);
+    } catch (castError) {
+      log(`Director/Cast failed: ${castError}, falling back to single-call`);
+      // Fall through to Tier 2
     }
-  } catch (roundtableError) {
-    log(`Roundtable parse failed: ${roundtableError}, falling back to legacy`);
+  }
 
+  // === Tier 2: Single-call roundtable (existing) ===
+  // @ts-expect-error payload may not be assigned yet if Tier 1 skipped/failed
+  if (!payload) {
+    const prompt = generateBriefingPrompt(eventsText, date);
+    promptHash = hashString(prompt);
+
+    let response: LLMResponse;
+    try {
+      response = await client.complete(prompt);
+    } catch (error) {
+      log(`Single-call LLM failed: ${error}`);
+      // Fall through to Tier 3
+      response = undefined as unknown as LLMResponse;
+    }
+
+    if (response) {
+      try {
+        const parsed = parseJsonResponse(response.content);
+        payload = DailyBriefingPayload.parse(parsed);
+        if (!payload.roundtable || payload.roundtable.length < 4) {
+          throw new Error("Roundtable too short or missing");
+        }
+        totalUsage = response.usage;
+        log(`Single-call roundtable produced ${payload.roundtable.length} turns`);
+      } catch (roundtableError) {
+        log(`Roundtable parse failed: ${roundtableError}, falling back to legacy`);
+        // Fall through to Tier 3
+      }
+    }
+  }
+
+  // === Tier 3: Legacy changedSince format ===
+  // @ts-expect-error payload may not be assigned yet if Tier 1+2 failed
+  if (!payload) {
     const legacyPrompt = generateLegacyBriefingPrompt(eventsText, date);
+    promptHash = hashString(legacyPrompt);
     let legacyResponse: LLMResponse;
     try {
       legacyResponse = await client.complete(legacyPrompt);
@@ -204,6 +243,7 @@ export async function generateDailyBriefing(
     try {
       const legacyParsed = parseJsonResponse(legacyResponse.content);
       payload = DailyBriefingPayload.parse(legacyParsed);
+      totalUsage = legacyResponse.usage;
     } catch (legacyError) {
       log(`Legacy parse also failed: ${legacyError}`);
       return {
@@ -212,12 +252,9 @@ export async function generateDailyBriefing(
         error: `Parse error: ${legacyError}`,
       };
     }
-
-    // Accumulate token usage from fallback call
-    response.usage.inputTokens += legacyResponse.usage.inputTokens;
-    response.usage.outputTokens += legacyResponse.usage.outputTokens;
-    response.usage.totalTokens += legacyResponse.usage.totalTokens;
   }
+
+  const latencyMs = Date.now() - startTime;
 
   // Ensure metadata is accurate
   payload.eventCount = events.length;
@@ -234,17 +271,17 @@ export async function generateDailyBriefing(
         id: runId,
         provider: client.provider,
         model: client.model,
-        inputTokens: response.usage.inputTokens,
-        outputTokens: response.usage.outputTokens,
-        totalTokens: response.usage.totalTokens,
+        inputTokens: totalUsage.inputTokens,
+        outputTokens: totalUsage.outputTokens,
+        totalTokens: totalUsage.totalTokens,
         costCents: calculateGeminiCost(
-          response.usage.inputTokens,
-          response.usage.outputTokens
+          totalUsage.inputTokens,
+          totalUsage.outputTokens
         ),
         latencyMs,
         promptHash,
         inputHash,
-        processorName: PROCESSOR_NAME,
+        processorName: processorTag,
       },
     });
 

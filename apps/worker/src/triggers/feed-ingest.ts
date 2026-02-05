@@ -3,21 +3,23 @@ import IORedis from "ioredis";
 import { fetchHNTopStories } from "@genai/trpc/services/hn-feed";
 import { fetchGitHubTrending } from "@genai/trpc/services/github-feed";
 import { fetchArxivPapers } from "@genai/trpc/services/arxiv-feed";
-import type { NormalizedEvent } from "@genai/shared";
+import { fetchRedditAIPosts } from "@genai/trpc/services/reddit-feed";
+import { fetchDevtoArticles } from "@genai/trpc/services/devto-feed";
+import { fetchLobstersStories } from "@genai/trpc/services/lobsters-feed";
+import { fetchHuggingFaceModels } from "@genai/trpc/services/huggingface-feed";
+import { fetchYouTubeVideos } from "@genai/trpc/services/youtube-feed";
+import { fetchProductHuntPosts } from "@genai/trpc/services/producthunt-feed";
+import { fetchNewsAPIArticles } from "@genai/trpc/services/newsapi-feed";
+import { fetchLeaderboardModels } from "@genai/trpc/services/leaderboard-feed";
+import type { NormalizedEvent, SourceType } from "@genai/shared";
 
 // ============================================================================
 // FEED INGESTION TRIGGER
 // ============================================================================
-// Fetches items from various feeds (HN, GitHub, arXiv) and enqueues
-// evidence-snapshot jobs for each item.
+// Fetches items from ALL 11 feed sources and enqueues evidence-snapshot jobs.
 //
-// Run via: pnpm ingest
-//
-// Uses existing feed services from @genai/trpc/services/
-
-// ============================================================================
-// TYPES
-// ============================================================================
+// Run manually: pnpm ingest
+// Or triggered by BullMQ repeatable job (every 2 hours)
 
 export interface FeedItem {
   url: string;
@@ -25,34 +27,24 @@ export interface FeedItem {
   content?: string;
   author?: string;
   publishedAt?: Date;
-  sourceType: "HN" | "GITHUB" | "ARXIV" | "NEWSAPI";
+  sourceType: SourceType;
   sourceId: string;
 }
 
-export interface FeedSource {
+interface FeedSource {
   name: string;
-  type: FeedItem["sourceType"];
+  type: SourceType;
   fetch: () => Promise<FeedItem[]>;
 }
-
-// ============================================================================
-// LOGGING
-// ============================================================================
 
 function log(message: string): void {
   process.env.NODE_ENV !== "test" &&
     console.log(`[feed-ingest] ${message}`);
 }
 
-// ============================================================================
-// FEED SOURCE ADAPTERS
-// ============================================================================
-// These adapt the existing feed services (which return NormalizedEvent[])
-// to the FeedItem[] format expected by the ingestion pipeline.
-
 function normalizedEventToFeedItem(
   event: NormalizedEvent,
-  sourceType: FeedItem["sourceType"]
+  sourceType: SourceType
 ): FeedItem {
   return {
     url: event.url,
@@ -63,52 +55,67 @@ function normalizedEventToFeedItem(
   };
 }
 
-/**
- * Hacker News feed source - fetches AI-related stories from HN
- */
-async function fetchHackerNewsItems(): Promise<FeedItem[]> {
-  log("Fetching Hacker News items...");
-  const events = await fetchHNTopStories(50); // Fetch top 50, filter for AI
-  return events.map((e) => normalizedEventToFeedItem(e, "HN"));
-}
-
-/**
- * GitHub trending feed source - fetches trending AI/ML repos
- */
-async function fetchGitHubItems(): Promise<FeedItem[]> {
-  log("Fetching GitHub trending items...");
-  const events = await fetchGitHubTrending();
-  return events.map((e) => normalizedEventToFeedItem(e, "GITHUB"));
-}
-
-/**
- * arXiv feed source - fetches recent AI/ML papers
- */
-async function fetchArxivItems(): Promise<FeedItem[]> {
-  log("Fetching arXiv papers...");
-  const events = await fetchArxivPapers();
-  return events.map((e) => normalizedEventToFeedItem(e, "ARXIV"));
-}
-
 // ============================================================================
-// FEED SOURCES REGISTRY
+// FEED SOURCES REGISTRY - All 11 sources
 // ============================================================================
 
 const feedSources: FeedSource[] = [
+  // --- Free, no API key ---
   {
     name: "Hacker News",
     type: "HN",
-    fetch: fetchHackerNewsItems,
+    fetch: async () => (await fetchHNTopStories(50)).map((e) => normalizedEventToFeedItem(e, "HN")),
   },
   {
-    name: "GitHub",
+    name: "GitHub Trending",
     type: "GITHUB",
-    fetch: fetchGitHubItems,
+    fetch: async () => (await fetchGitHubTrending()).map((e) => normalizedEventToFeedItem(e, "GITHUB")),
   },
   {
     name: "arXiv",
     type: "ARXIV",
-    fetch: fetchArxivItems,
+    fetch: async () => (await fetchArxivPapers()).map((e) => normalizedEventToFeedItem(e, "ARXIV")),
+  },
+  {
+    name: "Reddit",
+    type: "REDDIT",
+    fetch: async () => (await fetchRedditAIPosts()).map((e) => normalizedEventToFeedItem(e, "REDDIT")),
+  },
+  {
+    name: "Dev.to",
+    type: "DEVTO",
+    fetch: async () => (await fetchDevtoArticles()).map((e) => normalizedEventToFeedItem(e, "DEVTO")),
+  },
+  {
+    name: "Lobsters",
+    type: "LOBSTERS",
+    fetch: async () => (await fetchLobstersStories()).map((e) => normalizedEventToFeedItem(e, "LOBSTERS")),
+  },
+  {
+    name: "HuggingFace Models",
+    type: "HUGGINGFACE",
+    fetch: async () => (await fetchHuggingFaceModels()).map((e) => normalizedEventToFeedItem(e, "HUGGINGFACE")),
+  },
+  {
+    name: "LLM Leaderboard",
+    type: "LEADERBOARD",
+    fetch: async () => (await fetchLeaderboardModels()).map((e) => normalizedEventToFeedItem(e, "LEADERBOARD")),
+  },
+  // --- Require API keys ---
+  {
+    name: "YouTube",
+    type: "YOUTUBE",
+    fetch: async () => (await fetchYouTubeVideos()).map((e) => normalizedEventToFeedItem(e, "YOUTUBE")),
+  },
+  {
+    name: "ProductHunt",
+    type: "PRODUCTHUNT",
+    fetch: async () => (await fetchProductHuntPosts()).map((e) => normalizedEventToFeedItem(e, "PRODUCTHUNT")),
+  },
+  {
+    name: "NewsAPI",
+    type: "NEWSAPI",
+    fetch: async () => (await fetchNewsAPIArticles()).map((e) => normalizedEventToFeedItem(e, "NEWSAPI")),
   },
 ];
 
@@ -116,23 +123,12 @@ const feedSources: FeedSource[] = [
 // MAIN INGESTION FUNCTION
 // ============================================================================
 
-/**
- * Ingest all feed sources and enqueue evidence-snapshot jobs.
- *
- * @param redisUrl - Redis connection URL
- * @returns Number of items enqueued
- */
 export async function ingestFeeds(
   redisUrl: string = process.env.REDIS_URL || "redis://localhost:6379"
 ): Promise<number> {
   log(`Starting feed ingestion with ${feedSources.length} sources`);
 
-  // Create Redis connection
-  const connection = new IORedis(redisUrl, {
-    maxRetriesPerRequest: null,
-  });
-
-  // Create queue for evidence-snapshot
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
   const evidenceSnapshotQueue = new Queue("evidence-snapshot", { connection });
 
   let totalEnqueued = 0;
@@ -145,7 +141,6 @@ export async function ingestFeeds(
         const items = await source.fetch();
         log(`Got ${items.length} items from ${source.name}`);
 
-        // Enqueue each item with all available metadata
         for (const item of items) {
           await evidenceSnapshotQueue.add("snapshot", {
             url: item.url,
@@ -160,14 +155,12 @@ export async function ingestFeeds(
         log(`Enqueued ${items.length} items from ${source.name}`);
       } catch (error) {
         log(`Error fetching from ${source.name}: ${error instanceof Error ? error.message : String(error)}`);
-        // Continue with other sources even if one fails
       }
     }
 
     log(`Feed ingestion complete: ${totalEnqueued} total items enqueued`);
     return totalEnqueued;
   } finally {
-    // Clean up
     await evidenceSnapshotQueue.close();
     await connection.quit();
   }
@@ -177,16 +170,11 @@ export async function ingestFeeds(
 // CLI ENTRY POINT
 // ============================================================================
 
-// Run when executed directly
-const isMainModule =
-  typeof process !== "undefined" &&
-  typeof require !== "undefined" &&
-  require.main === module;
+const isESMMain =
+  process.argv[1]?.endsWith("feed-ingest.ts") ||
+  process.argv[1]?.endsWith("feed-ingest.js");
 
-// ESM detection
-const isESMMain = process.argv[1]?.endsWith("feed-ingest.ts") || process.argv[1]?.endsWith("feed-ingest.js");
-
-if (isMainModule || isESMMain) {
+if (isESMMain) {
   ingestFeeds()
     .then((count) => {
       log(`Done! Enqueued ${count} items.`);

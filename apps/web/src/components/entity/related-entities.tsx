@@ -2,26 +2,11 @@
 
 import Link from "next/link";
 import { trpc } from "@/trpc";
-
-// ============================================================================
-// RELATED ENTITIES - Displays entities connected through approved relationships
-// Part of Phase 5 (Explore) - Entity Dossier
-// ============================================================================
+import { getTypeConfig } from "./type-config";
 
 interface RelatedEntitiesProps {
   entityId: string;
 }
-
-const typeConfig: Record<string, { icon: string; color: string }> = {
-  COMPANY: { icon: "🏢", color: "text-blue-500" },
-  LAB: { icon: "🔬", color: "text-purple-500" },
-  MODEL: { icon: "🤖", color: "text-green-500" },
-  PRODUCT: { icon: "📦", color: "text-orange-500" },
-  PERSON: { icon: "👤", color: "text-pink-500" },
-  REGULATION: { icon: "📜", color: "text-red-500" },
-  DATASET: { icon: "📊", color: "text-cyan-500" },
-  BENCHMARK: { icon: "📈", color: "text-yellow-500" },
-};
 
 export function RelatedEntities({ entityId }: RelatedEntitiesProps) {
   const { data: related, isLoading } = trpc.entities.related.useQuery({
@@ -55,22 +40,31 @@ export function RelatedEntities({ entityId }: RelatedEntitiesProps) {
     <section>
       <h2 className="text-lg font-semibold mb-4">Povezani entiteti</h2>
       <div className="space-y-2">
-        {related.map(({ entity, connectionCount }) => {
-          const config = typeConfig[entity.type] || {
-            icon: "❓",
-            color: "text-gray-500",
-          };
+        {related.map(({ entity, connectionCount, relationshipTypes }) => {
+          const config = getTypeConfig(entity.type);
           return (
             <Link
               key={entity.id}
               href={`/explore/${entity.slug}`}
-              className="flex items-center justify-between p-2 rounded hover:bg-accent transition-colors"
+              className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent transition-colors"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <span className={config.color}>{config.icon}</span>
+                <span className={config.textColor}>{config.icon}</span>
                 <span className="truncate">{entity.name}</span>
+                {relationshipTypes.length > 0 && (
+                  <span className="hidden sm:inline-flex gap-1">
+                    {relationshipTypes.map((rt) => (
+                      <span
+                        key={rt}
+                        className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded"
+                      >
+                        {rt}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </div>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
                 {connectionCount}
               </span>
             </Link>

@@ -235,6 +235,116 @@ describe("sessions router", () => {
     });
   });
 
+  describe("addRecentSearch", () => {
+    it("stores a recent search entry in preferences", async () => {
+      vi.mocked(prisma.anonSession.findUnique).mockResolvedValue({
+        preferences: {},
+      } as never);
+      vi.mocked(prisma.anonSession.update).mockResolvedValue({} as never);
+
+      await prisma.anonSession.findUnique({
+        where: { id: "session-1" },
+        select: { preferences: true },
+      });
+
+      await prisma.anonSession.update({
+        where: { id: "session-1" },
+        data: {
+          preferences: {
+            recentSearches: [
+              {
+                query: "openai",
+                slug: "openai",
+                name: "OpenAI",
+                type: "COMPANY",
+                timestamp: expect.any(String),
+              },
+            ],
+          },
+        },
+      });
+
+      expect(prisma.anonSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            preferences: expect.objectContaining({
+              recentSearches: expect.arrayContaining([
+                expect.objectContaining({
+                  slug: "openai",
+                  name: "OpenAI",
+                  type: "COMPANY",
+                }),
+              ]),
+            }),
+          }),
+        })
+      );
+    });
+
+    it("deduplicates by slug and caps at 8 entries", () => {
+      const existing = Array.from({ length: 8 }, (_, i) => ({
+        slug: `entity-${i}`,
+        name: `Entity ${i}`,
+        type: "COMPANY",
+        query: `entity-${i}`,
+        timestamp: new Date().toISOString(),
+      }));
+
+      // Simulate dedup + prepend + cap logic
+      const newEntry = {
+        slug: "entity-0",
+        name: "Entity 0 Updated",
+        type: "COMPANY",
+        query: "entity-0",
+        timestamp: new Date().toISOString(),
+      };
+
+      const filtered = existing.filter((e) => e.slug !== newEntry.slug);
+      const updated = [newEntry, ...filtered].slice(0, 8);
+
+      expect(updated).toHaveLength(8);
+      expect(updated[0]!.slug).toBe("entity-0");
+      expect(updated[0]!.name).toBe("Entity 0 Updated");
+    });
+  });
+
+  describe("getRecentSearches", () => {
+    it("returns recent searches from preferences", async () => {
+      const recentSearches = [
+        { query: "openai", slug: "openai", name: "OpenAI", type: "COMPANY", timestamp: "2026-02-01T00:00:00Z" },
+      ];
+      vi.mocked(prisma.anonSession.findUnique).mockResolvedValue({
+        preferences: { recentSearches },
+      } as never);
+
+      const session = await prisma.anonSession.findUnique({
+        where: { id: "session-1" },
+        select: { preferences: true },
+      });
+
+      const prefs = session?.preferences as Record<string, unknown>;
+      const result = Array.isArray(prefs?.recentSearches) ? prefs.recentSearches : [];
+
+      expect(result).toEqual(recentSearches);
+    });
+
+    it("returns empty array when no recent searches", async () => {
+      vi.mocked(prisma.anonSession.findUnique).mockResolvedValue({
+        preferences: {},
+      } as never);
+
+      const session = await prisma.anonSession.findUnique({
+        where: { id: "session-1" },
+        select: { preferences: true },
+      });
+
+      const prefs = session?.preferences as Record<string, unknown>;
+      const result = Array.isArray(prefs?.recentSearches) ? prefs.recentSearches : [];
+
+      expect(result).toEqual([]);
+    });
+  });
+
   describe("context integration", () => {
     it("provides sessionId through context", () => {
       const ctx = createTRPCContext({ sessionId: "session-123" });

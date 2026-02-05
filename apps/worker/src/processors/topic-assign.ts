@@ -61,116 +61,114 @@ export async function assignTopics(
 
   log(`Starting topic assignment for event ${eventId}`);
 
-  return prisma.$transaction(async (tx) => {
-    // Load event with evidence
-    const event = (await tx.event.findUnique({
-      where: { id: eventId },
-      include: {
-        evidence: {
-          include: {
-            snapshot: true,
-          },
+  // Load event with evidence (outside transaction - read-only)
+  const event = (await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      evidence: {
+        include: {
+          snapshot: true,
         },
       },
-    })) as EventWithEvidence | null;
+    },
+  })) as EventWithEvidence | null;
 
-    // Check if event exists
-    if (!event) {
-      log(`Event ${eventId} not found`);
-      return {
-        success: false,
-        eventId,
-        topicsAssigned: 0,
-        error: `Event ${eventId} not found`,
-      };
-    }
+  if (!event) {
+    log(`Event ${eventId} not found`);
+    return {
+      success: false,
+      eventId,
+      topicsAssigned: 0,
+      error: `Event ${eventId} not found`,
+    };
+  }
 
-    // Check status - only process ENRICHED events
-    if (event.status !== "ENRICHED") {
-      log(`Event ${eventId} not in ENRICHED status (current: ${event.status}), skipping`);
-      return {
-        success: true,
-        eventId,
-        topicsAssigned: 0,
-        skipped: true,
-        skipReason: `Event not in ENRICHED status (current: ${event.status})`,
-      };
-    }
+  if (event.status !== "ENRICHED") {
+    log(`Event ${eventId} not in ENRICHED status (current: ${event.status}), skipping`);
+    return {
+      success: true,
+      eventId,
+      topicsAssigned: 0,
+      skipped: true,
+      skipReason: `Event not in ENRICHED status (current: ${event.status})`,
+    };
+  }
 
-    // Fetch all available topics from database
-    const availableTopics = (await tx.topic.findMany({
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-      },
-    })) as TopicData[];
+  // Fetch available topics (outside transaction - read-only)
+  const availableTopics = (await prisma.topic.findMany({
+    select: { id: true, slug: true, name: true },
+  })) as TopicData[];
 
-    if (availableTopics.length === 0) {
-      log(`No topics available in database for event ${eventId}`);
-      return {
-        success: true,
-        eventId,
-        topicsAssigned: 0,
-        skipped: true,
-        skipReason: "No topics available in database",
-      };
-    }
+  if (availableTopics.length === 0) {
+    log(`No topics available in database for event ${eventId}`);
+    return {
+      success: true,
+      eventId,
+      topicsAssigned: 0,
+      skipped: true,
+      skipReason: "No topics available in database",
+    };
+  }
 
-    // Build event context
-    const eventText = buildEventText(event.title, event.evidence);
+  // Build event context and prompt (outside transaction)
+  const eventText = buildEventText(event.title, event.evidence);
+  const prompt = TOPIC_ASSIGN_PROMPT(eventText, availableTopics);
+  const promptHash = hashString(prompt);
+  const inputHash = hashString(eventText);
 
-    // Build prompt
-    const prompt = TOPIC_ASSIGN_PROMPT(eventText, availableTopics);
-    const promptHash = hashString(prompt);
-    const inputHash = hashString(eventText);
+  // Call LLM (outside transaction - slow I/O)
+  log(`Calling LLM to assign topics for event ${eventId}`);
+  const startTime = Date.now();
+  let response: LLMResponse;
+  try {
+    response = await client.complete(prompt);
+  } catch (error) {
+    log(`LLM call failed for topic assignment: ${error}`);
+    throw error;
+  }
+  const latencyMs = Date.now() - startTime;
 
-    // Call LLM and measure latency
-    log(`Calling LLM to assign topics for event ${eventId}`);
-    const startTime = Date.now();
-    let response: LLMResponse;
-    try {
-      response = await client.complete(prompt);
-    } catch (error) {
-      log(`LLM call failed for topic assignment: ${error}`);
-      throw error;
-    }
-    const latencyMs = Date.now() - startTime;
+  // Parse and validate response (outside transaction)
+  let payload: TopicAssignPayload;
+  try {
+    let jsonStr = response.content.trim();
+    if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7);
+    if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
+    if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
+    jsonStr = jsonStr.trim();
 
-    // Parse and validate response
-    let payload: TopicAssignPayload;
-    try {
-      // Extract JSON from response (handle potential markdown code blocks)
-      let jsonStr = response.content.trim();
-      if (jsonStr.startsWith("```json")) {
-        jsonStr = jsonStr.slice(7);
-      }
-      if (jsonStr.startsWith("```")) {
-        jsonStr = jsonStr.slice(3);
-      }
-      if (jsonStr.endsWith("```")) {
-        jsonStr = jsonStr.slice(0, -3);
-      }
-      jsonStr = jsonStr.trim();
-
-      const parsed = JSON.parse(jsonStr);
-      payload = TopicAssignPayload.parse(parsed);
-    } catch (error) {
-      log(`Failed to parse topic assignment response: ${error}`);
-      throw new Error(
-        `Failed to parse topic assignment response: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-
-    // Calculate cost
-    const costCents = calculateCost(
-      client.provider,
-      response.usage.inputTokens,
-      response.usage.outputTokens
+    const parsed = JSON.parse(jsonStr);
+    payload = TopicAssignPayload.parse(parsed);
+  } catch (error) {
+    log(`Failed to parse topic assignment response: ${error}`);
+    throw new Error(
+      `Failed to parse topic assignment response: ${error instanceof Error ? error.message : String(error)}`
     );
+  }
 
-    // Generate run ID for linking artifact to LLM run
-    const runId = crypto.randomUUID();
+  const costCents = calculateCost(
+    client.provider,
+    response.usage.inputTokens,
+    response.usage.outputTokens
+  );
+  const runId = crypto.randomUUID();
+
+  // Write all results in a single fast transaction (DB writes only)
+  return prisma.$transaction(async (tx) => {
+    // Re-check status inside transaction to prevent races
+    const current = await tx.event.findUnique({
+      where: { id: eventId },
+      select: { status: true },
+    });
+    if (current?.status !== "ENRICHED") {
+      return {
+        success: true,
+        eventId,
+        topicsAssigned: 0,
+        skipped: true,
+        skipReason: `Event status changed to ${current?.status} during topic assignment`,
+      };
+    }
 
     // Create LLM run record
     await tx.lLMRun.create({
@@ -193,7 +191,6 @@ export async function assignTopics(
     // Build map of slug -> topic for quick lookup
     const topicsBySlug = new Map(availableTopics.map((t) => [t.slug, t]));
 
-    // Process each assigned topic (filter out unknown slugs)
     let topicsAssigned = 0;
     const validTopics: Array<{ slug: string; confidence: number }> = [];
 
@@ -205,7 +202,6 @@ export async function assignTopics(
         continue;
       }
 
-      // Create EventTopic join with LLM origin
       await tx.eventTopic.create({
         data: {
           eventId,
@@ -221,7 +217,6 @@ export async function assignTopics(
       log(`Assigned topic ${topicAssignment.slug} with confidence ${topicAssignment.confidence}`);
     }
 
-    // Create artifact with only valid topics
     await tx.eventArtifact.create({
       data: {
         eventId,

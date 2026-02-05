@@ -3,7 +3,7 @@
 // Types
 interface RoundtableTurn {
   persona: "GM" | "Engineer" | "Skeptic";
-  moveType: "SETUP" | "TECH_READ" | "RISK_CHECK" | "CROSS_EXAM" | "EVIDENCE_CALL" | "TAKEAWAY";
+  moveType: "SETUP" | "TECH_READ" | "RISK_CHECK" | "CROSS_EXAM" | "EVIDENCE_CALL" | "TAKEAWAY" | "CUT";
   text: string;
   textHr: string;
   eventRef?: number;
@@ -28,12 +28,26 @@ const moveLabels: Record<string, string> = {
   CROSS_EXAM: "Ispitivanje",
   EVIDENCE_CALL: "Dokazi?",
   TAKEAWAY: "Zaključak",
+  CUT: "Pauza",
 };
 
 export function RoundtableSection({ turns }: RoundtableSectionProps) {
   return (
     <div className="space-y-3">
       {turns.map((turn, i) => {
+        // CUT renders as a thin separator, not a chat bubble
+        if (turn.moveType === "CUT") {
+          return (
+            <div key={i} className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-muted-foreground/20" />
+              <span className="text-xs text-muted-foreground/50 uppercase tracking-widest">
+                {moveLabels.CUT}
+              </span>
+              <div className="flex-1 h-px bg-muted-foreground/20" />
+            </div>
+          );
+        }
+
         const style = personaStyle[turn.persona] ?? personaStyle.GM;
         return (
           <div

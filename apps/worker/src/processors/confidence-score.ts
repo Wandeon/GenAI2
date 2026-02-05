@@ -48,6 +48,30 @@ function log(message: string): void {
 }
 
 // ============================================================================
+// ARTIFACT COMPLETENESS CHECK
+// ============================================================================
+
+const REQUIRED_ARTIFACTS = ["HEADLINE", "SUMMARY", "WHAT_HAPPENED", "WHY_MATTERS"] as const;
+
+/**
+ * Check if all required artifacts exist for an event.
+ * GM_TAKE is optional and does not block publishing.
+ */
+async function checkArtifactCompleteness(
+  eventId: string
+): Promise<{ complete: boolean; missing: string[] }> {
+  const artifacts = await prisma.eventArtifact.findMany({
+    where: { eventId },
+    select: { artifactType: true },
+  });
+
+  const existingTypes = new Set(artifacts.map((a) => a.artifactType));
+  const missing = REQUIRED_ARTIFACTS.filter((t) => !existingTypes.has(t));
+
+  return { complete: missing.length === 0, missing };
+}
+
+// ============================================================================
 // STATUS TRANSITION LOGIC
 // ============================================================================
 
@@ -142,9 +166,17 @@ export async function scoreConfidence(
   const gateStatus = confidenceToStatus(confidence);
   const sourceCount = event.evidence.length;
 
+  // Check artifact completeness (required for publish)
+  const { complete: artifactsComplete, missing: missingArtifacts } =
+    await checkArtifactCompleteness(eventId);
+
+  // If artifacts incomplete, force QUARANTINED regardless of confidence
+  const effectiveGateStatus = artifactsComplete ? gateStatus : "QUARANTINED";
+
   log(
     `Event ${eventId}: ${sourceCount} source(s), tiers=[${tiers.join(",")}], ` +
-      `confidence=${confidence}, gate=${gateStatus}, current=${event.status}`
+      `confidence=${confidence}, gate=${effectiveGateStatus}, current=${event.status}` +
+      (missingArtifacts.length > 0 ? `, missing=[${missingArtifacts.join(",")}]` : "")
   );
 
   // Perform atomic update
@@ -160,8 +192,8 @@ export async function scoreConfidence(
     }
 
     const freshStatus = current.status as EventStatus;
-    const transitionAllowed = shouldTransition(freshStatus, gateStatus);
-    const newStatus = transitionAllowed ? gateStatus : freshStatus;
+    const transitionAllowed = shouldTransition(freshStatus, effectiveGateStatus);
+    const newStatus = transitionAllowed ? effectiveGateStatus : freshStatus;
 
     // Always update cached confidence and sourceCount
     await tx.event.update({
@@ -169,7 +201,7 @@ export async function scoreConfidence(
       data: {
         confidence,
         sourceCount,
-        ...(transitionAllowed ? { status: gateStatus } : {}),
+        ...(transitionAllowed ? { status: effectiveGateStatus } : {}),
       },
     });
 
@@ -179,21 +211,24 @@ export async function scoreConfidence(
         data: {
           eventId,
           fromStatus: freshStatus,
-          toStatus: gateStatus,
+          toStatus: effectiveGateStatus,
           reason:
             `Confidence scoring: ${confidence} (${sourceCount} source(s), ` +
-            `tiers: [${tiers.join(", ")}])`,
+            `tiers: [${tiers.join(", ")}])` +
+            (missingArtifacts.length > 0
+              ? ` [BLOCKED: missing ${missingArtifacts.join(", ")}]`
+              : " [artifacts complete]"),
           changedBy: "confidence-score-processor",
         },
       });
 
       log(
-        `Event ${eventId} transitioned: ${freshStatus} -> ${gateStatus}`
+        `Event ${eventId} transitioned: ${freshStatus} -> ${effectiveGateStatus}`
       );
     } else {
       log(
         `Event ${eventId} status unchanged at ${freshStatus} ` +
-          `(gate=${gateStatus}, transition not allowed)`
+          `(gate=${effectiveGateStatus}, transition not allowed)`
       );
     }
 

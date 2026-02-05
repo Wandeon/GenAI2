@@ -13,7 +13,7 @@ import { useSelection } from "@/context/selection-context";
  * These are events that failed safety gates or have conflicting sources.
  */
 export function QuarantineLane() {
-  const { selectedEvent, selectEvent } = useSelection();
+  const { selectedEventId, selectEvent } = useSelection();
 
   const { data, isLoading } = trpc.events.list.useQuery({
     limit: 50,
@@ -42,8 +42,8 @@ export function QuarantineLane() {
               impactLevel={event.impactLevel}
               sourceCount={event.sourceCount}
               topics={event.topics}
-              isSelected={selectedEvent?.id === event.id}
-              onClick={() => selectEvent(event)}
+              isSelected={selectedEventId === event.id}
+              onClick={() => selectEvent(event.id)}
             />
           </div>
         ))

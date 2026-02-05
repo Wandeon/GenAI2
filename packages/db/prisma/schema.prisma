@@ -53,6 +53,7 @@ enum ArtifactType {
   HEADLINE // { en: string, hr: string }
   SUMMARY // { en: string, hr: string, bulletPoints: string[] }
   GM_TAKE // { take: string, takeHr: string, confidence: string }
+  WHAT_HAPPENED // { en, hr, sourceLine, disagreements? }
   WHY_MATTERS // { text: string, textHr: string, audience: string[] }
   ENTITY_EXTRACT // { entities: Array<{name, type, role, confidence}> }
   TOPIC_ASSIGN // { topics: Array<{slug, confidence}> }

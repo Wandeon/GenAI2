@@ -67,7 +67,7 @@ const SOURCE_GROUPS = [
 // ============================================================================
 
 export default function ObservatoryPage() {
-  const { selectedEvent, selectEvent } = useSelection();
+  const { selectedEventId, selectEvent } = useSelection();
 
   const { data: eventsData, isLoading } = trpc.events.list.useQuery({
     limit: 100,
@@ -129,8 +129,8 @@ export default function ObservatoryPage() {
           glowClass={group.glowClass}
           sources={[...group.sources]}
           eventsBySource={eventsBySource}
-          selectedEventId={selectedEvent?.id}
-          onSelectEvent={selectEvent}
+          selectedEventId={selectedEventId ?? undefined}
+          onSelectEvent={(event) => selectEvent(event.id)}
           isLoading={isLoading}
           delay={0.2 + i * 0.1}
         />

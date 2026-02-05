@@ -1,61 +1,100 @@
 "use client";
 
 import {
+  Suspense,
   createContext,
   useContext,
   useState,
   useCallback,
+  useEffect,
   useMemo,
   type ReactNode,
 } from "react";
-import type { NormalizedEvent } from "@genai/shared";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { trpc } from "@/trpc";
 
 interface SelectionContextValue {
-  // Currently selected event (full data)
-  selectedEvent: NormalizedEvent | null;
-
-  // Select an event
-  selectEvent: (event: NormalizedEvent) => void;
-
-  // Clear selection
+  selectedEventId: string | null;
+  eventDetail: any | null;
+  isDetailLoading: boolean;
+  selectEvent: (eventId: string) => void;
   clearSelection: () => void;
-
-  // Is context panel open on mobile?
   isContextOpen: boolean;
   setContextOpen: (open: boolean) => void;
 }
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
 
-export function SelectionProvider({ children }: { children: ReactNode }) {
-  const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
+function SelectionProviderInner({ children }: { children: ReactNode }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isContextOpen, setContextOpen] = useState(false);
 
-  const selectEvent = useCallback((event: NormalizedEvent) => {
-    setSelectedEvent(event);
-    setContextOpen(true); // Auto-open context on mobile when selecting
-  }, []);
+  const selectedEventId = searchParams.get("event");
+
+  const { data: eventDetail, isLoading: isDetailLoading, error } = trpc.events.byId.useQuery(
+    selectedEventId!,
+    { enabled: !!selectedEventId }
+  );
+
+  useEffect(() => {
+    if (selectedEventId && !isDetailLoading && error) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("event");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
+  }, [selectedEventId, isDetailLoading, error, searchParams, router, pathname]);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      setContextOpen(true);
+    }
+  }, [selectedEventId]);
+
+  const selectEvent = useCallback(
+    (eventId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("event", eventId);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router, pathname]
+  );
 
   const clearSelection = useCallback(() => {
-    setSelectedEvent(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("event");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     setContextOpen(false);
-  }, []);
+  }, [searchParams, router, pathname]);
 
   const value = useMemo(
     () => ({
-      selectedEvent,
+      selectedEventId,
+      eventDetail: eventDetail ?? null,
+      isDetailLoading,
       selectEvent,
       clearSelection,
       isContextOpen,
       setContextOpen,
     }),
-    [selectedEvent, selectEvent, clearSelection, isContextOpen]
+    [selectedEventId, eventDetail, isDetailLoading, selectEvent, clearSelection, isContextOpen]
   );
 
   return (
     <SelectionContext.Provider value={value}>
       {children}
     </SelectionContext.Provider>
+  );
+}
+
+export function SelectionProvider({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <SelectionProviderInner>{children}</SelectionProviderInner>
+    </Suspense>
   );
 }
 

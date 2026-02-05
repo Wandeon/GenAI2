@@ -157,7 +157,9 @@ export const eventsRouter = router({
         topics: {
           include: { topic: true },
         },
-        artifacts: true,
+        artifacts: {
+          orderBy: { version: "desc" },
+        },
         mentions: {
           include: { entity: true },
         },
@@ -183,16 +185,19 @@ export const eventsRouter = router({
       entities: event.mentions.map((m) => ({
         id: m.entity.id,
         name: m.entity.name,
+        nameHr: m.entity.nameHr,
         type: m.entity.type,
         role: m.role,
       })),
       statusHistory: event.statusHistory,
       evidence: event.evidence.map((e) => ({
         id: e.id,
+        role: e.role,
         url: e.snapshot.source.rawUrl,
         domain: e.snapshot.source.domain,
         trustTier: e.snapshot.source.trustTier,
         retrievedAt: e.snapshot.retrievedAt,
+        title: e.snapshot.title,
       })),
     };
   }),

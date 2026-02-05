@@ -10,7 +10,7 @@ import { ingestFeeds } from "./triggers/feed-ingest";
 // Cron only for heartbeats, not primary scheduling
 //
 // Pipeline Flow:
-// evidence-snapshot → event-cluster → event-create → confidence-score → event-enrich → (entity-extract + topic-assign) → relationship-extract → watchlist-match
+// evidence-snapshot → event-cluster → event-create → event-enrich → confidence-score → (entity-extract + topic-assign) → relationship-extract → watchlist-match
 
 // Import processor worker factories
 import { createEvidenceSnapshotWorker } from "./processors/evidence-snapshot";
@@ -147,41 +147,39 @@ eventClusterWorker.on("completed", async (_job: Job<EventClusterJob>, result: Ev
 });
 workers.push(eventClusterWorker);
 
-// 3. Event Create Worker - on completion, enqueue confidence-score
+// 3. Event Create Worker - on completion, enqueue event-enrich
 const eventCreateWorker = createEventCreateWorker(connection);
 eventCreateWorker.on("completed", async (_job: Job<EventCreateJob>, result: EventCreateResult) => {
   if (result && result.eventId) {
-    log(`event-create completed for ${result.eventId}, enqueueing confidence-score`);
-    await queues.confidenceScore.add("score", { eventId: result.eventId });
+    log(`event-create completed for ${result.eventId}, enqueueing event-enrich`);
+    await queues.eventEnrich.add("enrich", { eventId: result.eventId });
   }
 });
 workers.push(eventCreateWorker);
 
-// 4. Confidence Score Worker - on completion, enqueue event-enrich
+// 4. Event Enrich Worker - on completion, enqueue confidence-score
+const eventEnrichWorker = createEventEnrichWorker(connection);
+eventEnrichWorker.on("completed", async (_job: Job<EventEnrichJob>, result: EventEnrichResult) => {
+  if (result && result.eventId) {
+    log(`event-enrich completed for ${result.eventId}, enqueueing confidence-score`);
+    await queues.confidenceScore.add("score", { eventId: result.eventId });
+  }
+});
+workers.push(eventEnrichWorker);
+
+// 5. Confidence Score Worker - on completion, enqueue entity-extract AND topic-assign
 const confidenceScoreWorker = createConfidenceScoreWorker(connection);
 confidenceScoreWorker.on("completed", async (_job: Job<ConfidenceScoreJob>, result: ConfidenceScoreResult) => {
   if (result && result.eventId) {
-    log(`confidence-score completed for ${result.eventId}: ${result.confidence}, enqueueing event-enrich`);
-    await queues.eventEnrich.add("enrich", { eventId: result.eventId });
-  }
-});
-workers.push(confidenceScoreWorker);
-
-// 5. Event Enrich Worker - on completion, enqueue entity-extract AND topic-assign in parallel
-const eventEnrichWorker = createEventEnrichWorker(connection);
-eventEnrichWorker.on("completed", async (_job: Job<EventEnrichJob>, result: EventEnrichResult) => {
-  if (result && result.success && !result.skipped && result.eventId) {
-    log(`event-enrich completed for ${result.eventId}, enqueueing entity-extract and topic-assign`);
-    // Initialize parallel tracking for this event
+    log(`confidence-score completed for ${result.eventId}: ${result.confidence}, enqueueing entity-extract and topic-assign`);
     parallelCompletions.set(result.eventId, { entityDone: false, topicDone: false });
-    // Enqueue both processors in parallel
     await Promise.all([
       queues.entityExtract.add("extract", { eventId: result.eventId }),
       queues.topicAssign.add("assign", { eventId: result.eventId }),
     ]);
   }
 });
-workers.push(eventEnrichWorker);
+workers.push(confidenceScoreWorker);
 
 // 6. Entity Extract Worker - on completion, check if topic-assign is done too
 const entityExtractWorker = createEntityExtractWorker(connection);
@@ -322,7 +320,7 @@ process.on("SIGINT", shutdown);
 // ============================================================================
 
 log(`Worker started with ${workers.length} processors`);
-log("Pipeline: evidence-snapshot → event-cluster → event-create → confidence-score → event-enrich → (entity-extract + topic-assign) → relationship-extract → watchlist-match");
+log("Pipeline: evidence-snapshot → event-cluster → event-create → event-enrich → confidence-score → (entity-extract + topic-assign) → relationship-extract → watchlist-match");
 
 // Export for testing
 export { connection, workers };

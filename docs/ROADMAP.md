@@ -385,59 +385,59 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 ### Sprint 5.1 – Entity Search
 
-* [ ] Fuzzy search with alias matching ("anthorpic" → Anthropic)
-* [ ] Search suggestions dropdown
-* [ ] Recent searches (session-based)
-* [ ] Search tRPC router enhancements
+* [x] Fuzzy search with alias matching ("anthorpic" → Anthropic)
+* [x] Search suggestions dropdown
+* [x] Recent searches (session-based)
+* [x] Search tRPC router enhancements
 
 ### Sprint 5.2 – Entity Dossier Page
 
-* [ ] `/explore/[slug]` route
-* [ ] Entity header (name, type, description)
-* [ ] Bilingual support (en/hr)
-* [ ] Entity aliases display
+* [x] `/explore/[slug]` route
+* [x] Entity header (name, type, description)
+* [x] Bilingual support (en/hr)
+* [x] Entity aliases display
 
 ### Sprint 5.3 – Recent Events for Entity
 
-* [ ] Events timeline component
-* [ ] Query events where entity is mentioned
-* [ ] Role filter (SUBJECT, OBJECT, MENTIONED)
-* [ ] Pagination/infinite scroll
+* [x] Events timeline component
+* [x] Query events where entity is mentioned
+* [x] Role filter (SUBJECT, OBJECT, MENTIONED)
+* [x] Pagination/infinite scroll
 
 ### Sprint 5.4 – Related Entities
 
-* [ ] Top 10 connected entities list
-* [ ] Connection count badge
-* [ ] Relationship type breakdown
-* [ ] Click → navigate to dossier
+* [x] Top 10 connected entities list
+* [x] Connection count badge
+* [x] Relationship type breakdown
+* [x] Click → navigate to dossier
 
 ### Sprint 5.5 – Graph View (Optional Tab)
 
-* [ ] Force-directed graph component
-* [ ] Entity nodes with type colors
-* [ ] Relationship edges with labels
+* [x] Force-directed graph component
+* [x] Entity nodes with type colors
+* [x] Relationship edges with labels
 * [ ] Zoom and pan controls
 
 ### Sprint 5.6 – Graph Filters
 
-* [ ] Filter by entity type
-* [ ] Filter by relationship type
+* [x] Filter by entity type
+* [x] Filter by relationship type
 * [ ] Time range filter
-* [ ] Node count limit
+* [x] Node count limit
 
 ### Sprint 5.7 – Mobile Dossier
 
-* [ ] Responsive layout for 375px
-* [ ] Collapsible sections
-* [ ] Touch-friendly graph (or hide on mobile)
+* [x] Responsive layout for 375px
+* [x] Collapsible sections
+* [x] Touch-friendly graph (or hide on mobile)
 * [ ] Swipe navigation
 
 **Gate:**
 
-* [ ] Search "OpenAI" → dossier page renders
-* [ ] Recent events show for entity
-* [ ] Related entities clickable
-* [ ] Works on 375px mobile
+* [x] Search "OpenAI" → dossier page renders
+* [x] Recent events show for entity
+* [x] Related entities clickable
+* [x] Works on 375px mobile
 
 ---
 

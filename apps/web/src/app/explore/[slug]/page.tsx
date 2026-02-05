@@ -33,11 +33,11 @@ export default function EntityDossierPage({ params }: PageProps) {
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
       {/* Back link */}
       <Link
-        href="/observatory"
+        href="/explore"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Natrag na Observatory
+        Natrag na pretragu
       </Link>
 
       {/* Header */}
@@ -85,8 +85,8 @@ export default function EntityDossierPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Graph section */}
-      <section className="mt-8">
+      {/* Graph section - hidden on mobile (low value for touch) */}
+      <section className="mt-8 hidden md:block">
         <EntityGraph entityId={entity.id} entityName={entity.name} />
       </section>
     </div>

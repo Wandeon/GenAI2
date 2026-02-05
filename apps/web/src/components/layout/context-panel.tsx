@@ -7,7 +7,8 @@ interface ContextPanelProps {
 }
 
 export function ContextPanel({ onClose }: ContextPanelProps) {
-  const { selectedEvent, isContextOpen, clearSelection } = useSelection();
+  const { eventDetail, isDetailLoading, isContextOpen, clearSelection } = useSelection();
+  const selectedEvent = eventDetail;
 
   // Desktop content (reusable panel content)
   const panelContent = selectedEvent ? (
@@ -45,7 +46,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
         <div>
           <h4 className="text-sm font-medium mb-1">Teme</h4>
           <div className="flex flex-wrap gap-1">
-            {selectedEvent.topics.map((topic) => (
+            {selectedEvent.topics.map((topic: string) => (
               <span
                 key={topic}
                 className="text-xs bg-secondary px-2 py-0.5 rounded"

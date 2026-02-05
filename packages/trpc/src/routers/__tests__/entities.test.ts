@@ -227,4 +227,43 @@ describe("entities router", () => {
       expect(result).toEqual([]);
     });
   });
+
+  // ============================================================================
+  // TOP BY MENTIONS TESTS
+  // ============================================================================
+
+  describe("topByMentions", () => {
+    it("returns entities ordered by importance", async () => {
+      const topEntities = [
+        { id: "ent_1", name: "OpenAI", slug: "openai", type: "COMPANY" },
+        { id: "ent_2", name: "Anthropic", slug: "anthropic", type: "COMPANY" },
+      ];
+      vi.mocked(prisma.entity.findMany).mockResolvedValue(topEntities as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.topByMentions({ limit: 5 });
+
+      expect(prisma.entity.findMany).toHaveBeenCalledWith({
+        orderBy: { importance: "desc" },
+        take: 5,
+        select: { id: true, name: true, slug: true, type: true },
+      });
+      expect(result).toEqual(topEntities);
+    });
+
+    it("uses default limit of 5", async () => {
+      vi.mocked(prisma.entity.findMany).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      await caller.topByMentions({});
+
+      expect(prisma.entity.findMany).toHaveBeenCalledWith({
+        orderBy: { importance: "desc" },
+        take: 5,
+        select: { id: true, name: true, slug: true, type: true },
+      });
+    });
+  });
 });

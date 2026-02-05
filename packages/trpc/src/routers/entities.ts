@@ -22,20 +22,6 @@ export const entitiesRouter = router({
     return entity;
   }),
 
-  // Search entities with fuzzy matching
-  search: publicProcedure
-    .input(
-      z.object({
-        query: z.string().min(1),
-        type: z.string().optional(),
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input: _input }) => {
-      // TODO: Implement with aliases and fuzzy matching
-      return [];
-    }),
-
   // Fuzzy search entities by name, nameHr, or aliases
   fuzzySearch: publicProcedure
     .input(
@@ -70,21 +56,15 @@ export const entitiesRouter = router({
       return entities;
     }),
 
-  // Get entity timeline (events mentioning this entity)
-  timeline: publicProcedure
-    .input(
-      z.object({
-        entityId: z.string(),
-        cursor: z.string().optional(),
-        limit: z.number().min(1).max(50).default(20),
-      })
-    )
-    .query(async ({ input: _input }) => {
-      // TODO: Implement via EntityMention join
-      return {
-        items: [],
-        nextCursor: null as string | null,
-      };
+  // Get top entities by importance (for popular entities display)
+  topByMentions: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(20).default(5) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.entity.findMany({
+        orderBy: { importance: "desc" },
+        take: input.limit,
+        select: { id: true, name: true, slug: true, type: true },
+      });
     }),
 
   // Get related entities through approved relationships

@@ -31,10 +31,16 @@ export interface LLMRun {
   eventId?: string;
 }
 
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
 export interface LLMClient {
   provider: string;
   model: string;
   complete(prompt: string): Promise<LLMResponse>;
+  chat?(messages: ChatMessage[], options?: { temperature?: number }): Promise<LLMResponse>;
 }
 
 /**

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import type { LLMClient, LLMResponse } from "../gm/service";
+import type { ChatMessage, LLMClient, LLMResponse } from "../gm/service";
 
 // ============================================================================
 // OPENAI-COMPATIBLE CLIENT - Works with Ollama Cloud, DeepSeek, etc.
@@ -69,6 +69,40 @@ export function createLLMClient(
           model,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.3,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`LLM API error ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      const data: ChatCompletion = await res.json();
+
+      const content = data.choices?.[0]?.message?.content ?? "";
+      const inputTokens = data.usage?.prompt_tokens ?? 0;
+      const outputTokens = data.usage?.completion_tokens ?? 0;
+      const totalTokens = data.usage?.total_tokens ?? inputTokens + outputTokens;
+
+      return {
+        content,
+        usage: { inputTokens, outputTokens, totalTokens },
+      };
+    },
+
+    async chat(messages: ChatMessage[], options?: { temperature?: number }): Promise<LLMResponse> {
+      const url = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: options?.temperature ?? 0.7,
         }),
       });
 

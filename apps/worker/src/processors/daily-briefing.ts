@@ -210,12 +210,13 @@ export async function generateDailyBriefing(
     if (response) {
       try {
         const parsed = parseJsonResponse(response.content);
-        payload = DailyBriefingPayload.parse(parsed);
-        if (!payload.roundtable || payload.roundtable.length < 4) {
+        const candidate = DailyBriefingPayload.parse(parsed);
+        if (!candidate.roundtable || candidate.roundtable.length < 4) {
           throw new Error("Roundtable too short or missing");
         }
+        payload = candidate;
         totalUsage = response.usage;
-        log(`Single-call roundtable produced ${payload.roundtable.length} turns`);
+        log(`Single-call roundtable produced ${candidate.roundtable.length} turns`);
       } catch (roundtableError) {
         log(`Roundtable parse failed: ${roundtableError}, falling back to legacy`);
         // Fall through to Tier 3

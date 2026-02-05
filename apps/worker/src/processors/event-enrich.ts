@@ -8,6 +8,8 @@ import {
   HeadlinePayload,
   SummaryPayload,
   GMTakePayload,
+  WhatHappenedPayload,
+  WhyMattersPayload,
   type ArtifactType,
 } from "@genai/shared/schemas/artifacts";
 
@@ -48,6 +50,7 @@ interface EvidenceSnapshot {
   title: string | null;
   fullText: string | null;
   publishedAt: Date | null;
+  source?: { domain: string; trustTier: string };
 }
 
 interface EventEvidence {
@@ -75,8 +78,14 @@ const PROCESSOR_NAME = "event-enrich";
 const PROMPT_VERSION = "1.0.0";
 
 // Artifact types to generate during enrichment
-type EnrichmentArtifactType = "HEADLINE" | "SUMMARY" | "GM_TAKE";
-const ENRICHMENT_ARTIFACTS: EnrichmentArtifactType[] = ["HEADLINE", "SUMMARY", "GM_TAKE"];
+type EnrichmentArtifactType = "HEADLINE" | "SUMMARY" | "WHAT_HAPPENED" | "WHY_MATTERS" | "GM_TAKE";
+const ENRICHMENT_ARTIFACTS: EnrichmentArtifactType[] = [
+  "HEADLINE",
+  "SUMMARY",
+  "WHAT_HAPPENED",
+  "WHY_MATTERS",
+  "GM_TAKE",
+];
 
 // ============================================================================
 // LOGGING
@@ -164,6 +173,54 @@ Respond with ONLY a JSON object in this exact format:
   "caveats": ["Caveat 1 if any", "Caveat 2 if any"]
 }
 `,
+
+  WHAT_HAPPENED: (title: string, evidenceText: string) => `
+You are GM, an AI news curator. Write a concise factual account of what happened.
+
+Event title: ${title}
+
+Evidence:
+${evidenceText}
+
+Requirements:
+- 2-4 sentences per language, factual and precise
+- Croatian uses proper grammar (preposition "u", not "v")
+- Include a "sourceLine" listing the domains of sources used (e.g. "Sources: techcrunch.com, reuters.com")
+- If sources disagree on key facts, list the disagreements explicitly
+- Never editorialize or add opinion - save that for GM_TAKE
+- Never claim certainty beyond what sources state
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "en": "Factual account in English",
+  "hr": "Kratki opis u hrvatskom",
+  "sourceLine": "Sources: domain1.com, domain2.com",
+  "disagreements": ["Point where sources disagree (omit array if sources agree)"]
+}
+`,
+
+  WHY_MATTERS: (title: string, evidenceText: string) => `
+You are GM, an AI news curator for Croatian audiences. Explain why this event matters.
+
+Event title: ${title}
+
+Evidence:
+${evidenceText}
+
+Requirements:
+- Explain significance for different audiences
+- Be honest about uncertainty
+- Croatian uses proper grammar (preposition "u", not "v")
+- Target audiences: developers, executives, researchers, investors, general
+- Pick 1-3 most relevant audiences
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "text": "Why this matters in English",
+  "textHr": "Zasto je ovo vazno na hrvatskom",
+  "audience": ["developers", "researchers"]
+}
+`,
 };
 
 // ============================================================================
@@ -178,6 +235,7 @@ function buildEvidenceText(evidence: EventEvidence[]): string {
     .map((ev) => {
       const snapshot = ev.snapshot;
       const parts = [];
+      if (snapshot.source?.domain) parts.push(`Source: ${snapshot.source.domain} (${snapshot.source.trustTier})`);
       if (snapshot.title) parts.push(`Title: ${snapshot.title}`);
       if (snapshot.fullText) parts.push(`Content: ${snapshot.fullText}`);
       if (snapshot.publishedAt)
@@ -217,6 +275,10 @@ function parseAndValidateResponse<T>(
       return SummaryPayload.parse(parsed) as T;
     case "GM_TAKE":
       return GMTakePayload.parse(parsed) as T;
+    case "WHAT_HAPPENED":
+      return WhatHappenedPayload.parse(parsed) as T;
+    case "WHY_MATTERS":
+      return WhyMattersPayload.parse(parsed) as T;
     default:
       throw new Error(`Unknown artifact type: ${artifactType}`);
   }
@@ -247,7 +309,7 @@ function calculateCost(
  * This function:
  * 1. Loads the event with its evidence snapshots
  * 2. Skips if not in RAW status
- * 3. Generates HEADLINE, SUMMARY, and GM_TAKE artifacts
+ * 3. Generates HEADLINE, SUMMARY, WHAT_HAPPENED, WHY_MATTERS, and GM_TAKE artifacts
  * 4. Logs LLM runs for cost tracking
  * 5. Updates event status to ENRICHED
  *
@@ -269,7 +331,9 @@ export async function enrichEvent(
     include: {
       evidence: {
         include: {
-          snapshot: true,
+          snapshot: {
+            include: { source: { select: { domain: true, trustTier: true } } },
+          },
         },
       },
     },

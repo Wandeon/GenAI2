@@ -51,7 +51,10 @@ function log(message: string): void {
 // ARTIFACT COMPLETENESS CHECK
 // ============================================================================
 
-const REQUIRED_ARTIFACTS = ["HEADLINE", "SUMMARY", "WHAT_HAPPENED", "WHY_MATTERS"] as const;
+// Only HEADLINE + SUMMARY block publishing. WHAT_HAPPENED, WHY_MATTERS, GM_TAKE
+// are presentation enhancements — they enrich the UI but never gate existence.
+// Evidence decides publishability. Artifacts decide richness.
+const REQUIRED_ARTIFACTS = ["HEADLINE", "SUMMARY"] as const;
 
 /**
  * Check if all required artifacts exist for an event.

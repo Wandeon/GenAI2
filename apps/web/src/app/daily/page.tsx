@@ -4,7 +4,9 @@
 
 import { AlertCircle, Calendar, ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
+import { pickLatestArtifact } from "@genai/shared";
 import { trpc } from "@/trpc";
+import { DailyStreakBadge } from "@/components/daily/streak-badge";
 
 // Type for the briefing payload from GM
 interface BriefingPayload {
@@ -43,6 +45,14 @@ const confidenceLabels: Record<string, string> = {
   low: "niska",
   medium: "srednja",
   high: "visoka",
+};
+
+// Impact level badge styling
+const impactBadge: Record<string, { label: string; cls: string }> = {
+  BREAKING: { label: "BREAKING", cls: "bg-red-500/20 text-red-400" },
+  HIGH: { label: "HIGH", cls: "bg-orange-500/20 text-orange-400" },
+  MEDIUM: { label: "MEDIUM", cls: "bg-blue-500/20 text-blue-400" },
+  LOW: { label: "LOW", cls: "bg-gray-500/20 text-gray-400" },
 };
 
 export default function DailyRunPage() {
@@ -100,7 +110,10 @@ export default function DailyRunPage() {
               : "visoka pouzdanost"}
           </span>
         </p>
-        <time className="text-sm text-muted-foreground">{todayFormatted}</time>
+        <div className="flex items-center gap-2">
+          <time className="text-sm text-muted-foreground">{todayFormatted}</time>
+          <DailyStreakBadge />
+        </div>
       </header>
 
       {!briefing ? (
@@ -109,7 +122,7 @@ export default function DailyRunPage() {
           <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-lg">Današnji briefing još nije generiran</p>
           <p className="text-sm text-muted-foreground mt-2">
-            Briefing se generira svaki dan u 06:00 CET
+            Briefing se generira svaki dan u 06:00 po srednjoeuropskom vremenu
           </p>
         </div>
       ) : (
@@ -154,6 +167,18 @@ export default function DailyRunPage() {
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                             {getSummary(event.artifacts)}
                           </p>
+                          {getWhyMatters(event.artifacts) && (
+                            <p className="text-sm text-primary/80 mt-1 italic line-clamp-1">
+                              Zašto je bitno: {getWhyMatters(event.artifacts)}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            {event.impactLevel && impactBadge[event.impactLevel] && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${impactBadge[event.impactLevel].cls}`}>
+                                {impactBadge[event.impactLevel].label}
+                              </span>
+                            )}
+                          </div>
                           {event.mentions?.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {event.mentions.slice(0, 3).map((m) => (
@@ -267,21 +292,40 @@ export default function DailyRunPage() {
   );
 }
 
+// Map Prisma artifacts to pickLatestArtifact format
+function mapArtifacts(
+  artifacts: Array<{ artifactType: string; payload: unknown; version?: number }>
+) {
+  return artifacts.map((a) => ({
+    type: a.artifactType,
+    payload: a.payload,
+    version: a.version ?? 1,
+  }));
+}
+
 // Helper to extract summary from artifacts
 function getSummary(
-  artifacts: Array<{ artifactType: string; payload: unknown }> | undefined
+  artifacts: Array<{ artifactType: string; payload: unknown; version?: number }> | undefined
 ): string {
   if (!artifacts) return "";
-  const summaryArtifact = artifacts.find((a) => a.artifactType === "SUMMARY");
-  if (summaryArtifact) {
-    const payload = summaryArtifact.payload as ArtifactPayload;
-    const text = payload?.hr || payload?.en || "";
+  const mapped = mapArtifacts(artifacts);
+  const summary = pickLatestArtifact<ArtifactPayload>(mapped, "SUMMARY");
+  if (summary) {
+    const text = summary.payload?.hr || summary.payload?.en || "";
     return text.length > 150 ? text.slice(0, 150) + "..." : text;
   }
-  const headlineArtifact = artifacts.find((a) => a.artifactType === "HEADLINE");
-  if (headlineArtifact) {
-    const payload = headlineArtifact.payload as ArtifactPayload;
-    return payload?.hr || payload?.en || "";
-  }
-  return "";
+  const headline = pickLatestArtifact<ArtifactPayload>(mapped, "HEADLINE");
+  return headline?.payload?.hr || headline?.payload?.en || "";
+}
+
+// Helper to extract WHY_MATTERS from artifacts
+function getWhyMatters(
+  artifacts: Array<{ artifactType: string; payload: unknown; version?: number }> | undefined
+): string {
+  if (!artifacts) return "";
+  const mapped = mapArtifacts(artifacts);
+  const wm = pickLatestArtifact<{ textHr?: string; text?: string }>(mapped, "WHY_MATTERS");
+  if (!wm) return "";
+  const text = wm.payload?.textHr || wm.payload?.text || "";
+  return text.length > 120 ? text.slice(0, 120) + "..." : text;
 }

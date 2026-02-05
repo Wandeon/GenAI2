@@ -7,9 +7,20 @@ import Link from "next/link";
 import { pickLatestArtifact } from "@genai/shared";
 import { trpc } from "@/trpc";
 import { DailyStreakBadge } from "@/components/daily/streak-badge";
+import { RoundtableSection } from "@/components/daily/roundtable-section";
+
+// Roundtable turn from Council discussion
+interface RoundtableTurn {
+  persona: "GM" | "Engineer" | "Skeptic";
+  moveType: "SETUP" | "TECH_READ" | "RISK_CHECK" | "CROSS_EXAM" | "EVIDENCE_CALL" | "TAKEAWAY";
+  text: string;
+  textHr: string;
+  eventRef?: number;
+}
 
 // Type for the briefing payload from GM
 interface BriefingPayload {
+  roundtable?: RoundtableTurn[];
   changedSince?: {
     en: string;
     hr: string;
@@ -205,26 +216,41 @@ export default function DailyRunPage() {
             </div>
           </section>
 
-          {/* What changed */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Što se promijenilo</h2>
-            <div className="p-4 rounded-lg bg-card border">
-              <p className="text-foreground">
-                {payload?.changedSince?.hr || "Nema podataka o promjenama"}
+          {/* Council Roundtable or legacy What Changed */}
+          {payload?.roundtable && payload.roundtable.length > 0 ? (
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Council Roundtable</h2>
+              <div className="p-4 rounded-lg bg-card border">
+                <RoundtableSection turns={payload.roundtable} />
+              </div>
+            </section>
+          ) : payload?.changedSince ? (
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Što se promijenilo</h2>
+              <div className="p-4 rounded-lg bg-card border">
+                <p className="text-foreground">
+                  {payload.changedSince.hr || "Nema podataka o promjenama"}
+                </p>
+                {payload.changedSince.highlights &&
+                  payload.changedSince.highlights.length > 0 && (
+                    <ul className="mt-4 space-y-2">
+                      {payload.changedSince.highlights.map((highlight, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                          {highlight}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+              </div>
+            </section>
+          ) : (
+            <section>
+              <p className="text-muted-foreground text-sm">
+                Briefing se još obrađuje...
               </p>
-              {payload?.changedSince?.highlights &&
-                payload.changedSince.highlights.length > 0 && (
-                  <ul className="mt-4 space-y-2">
-                    {payload.changedSince.highlights.map((highlight, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                        {highlight}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* GM Prediction */}
           <section>

@@ -263,105 +263,146 @@ export async function enrichEvent(
 
   log(`Starting enrichment for event ${eventId}`);
 
-  return prisma.$transaction(async (tx) => {
-    // Load event with evidence
-    const event = (await tx.event.findUnique({
-      where: { id: eventId },
-      include: {
-        evidence: {
-          include: {
-            snapshot: true,
-          },
+  // Load event with evidence (outside transaction - read-only)
+  const event = (await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      evidence: {
+        include: {
+          snapshot: true,
         },
       },
-    })) as EventWithEvidence | null;
+    },
+  })) as EventWithEvidence | null;
 
-    // Check if event exists
-    if (!event) {
-      log(`Event ${eventId} not found`);
-      return {
-        success: false,
-        eventId,
-        artifacts: [],
-        totalLLMRuns: 0,
-        error: `Event ${eventId} not found`,
-      };
+  // Check if event exists
+  if (!event) {
+    log(`Event ${eventId} not found`);
+    return {
+      success: false,
+      eventId,
+      artifacts: [],
+      totalLLMRuns: 0,
+      error: `Event ${eventId} not found`,
+    };
+  }
+
+  // Check status - only process RAW events
+  if (event.status !== "RAW") {
+    log(`Event ${eventId} not in RAW status (current: ${event.status}), skipping`);
+    return {
+      success: true,
+      eventId,
+      artifacts: [],
+      totalLLMRuns: 0,
+      skipped: true,
+      skipReason: `Event not in RAW status (current: ${event.status})`,
+    };
+  }
+
+  // Build evidence context
+  const evidenceText = buildEvidenceText(event.evidence);
+
+  // Generate all artifacts via LLM (outside transaction - slow I/O)
+  interface ArtifactResult {
+    artifactType: EnrichmentArtifactType;
+    payload: unknown;
+    runId: string;
+    response: LLMResponse;
+    latencyMs: number;
+    promptHash: string;
+    inputHash: string;
+    costCents: number;
+  }
+
+  const artifactResults: ArtifactResult[] = [];
+
+  for (const artifactType of ENRICHMENT_ARTIFACTS) {
+    log(`Generating ${artifactType} artifact for event ${eventId}`);
+
+    // Build prompt
+    const promptBuilder = PROMPTS[artifactType] as (title: string, evidenceText: string) => string;
+    const prompt = promptBuilder(event.title, evidenceText);
+    const promptHash = hashString(prompt);
+    const inputHash = hashString(evidenceText);
+
+    // Call LLM and measure latency
+    const startTime = Date.now();
+    let response: LLMResponse;
+    try {
+      response = await client.complete(prompt);
+    } catch (error) {
+      log(`LLM call failed for ${artifactType}: ${error}`);
+      throw error;
+    }
+    const latencyMs = Date.now() - startTime;
+
+    // Parse and validate response
+    let payload: unknown;
+    try {
+      payload = parseAndValidateResponse(response.content, artifactType);
+    } catch (error) {
+      log(`Failed to parse ${artifactType} response: ${error}`);
+      throw new Error(
+        `Failed to parse ${artifactType} response: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
-    // Check status - only process RAW events
-    if (event.status !== "RAW") {
-      log(`Event ${eventId} not in RAW status (current: ${event.status}), skipping`);
+    // Calculate cost
+    const costCents = calculateCost(
+      client.provider,
+      response.usage.inputTokens,
+      response.usage.outputTokens
+    );
+
+    const runId = crypto.randomUUID();
+
+    artifactResults.push({
+      artifactType,
+      payload,
+      runId,
+      response,
+      latencyMs,
+      promptHash,
+      inputHash,
+      costCents,
+    });
+
+    log(`Generated ${artifactType} for event ${eventId} (cost: ${costCents} cents)`);
+  }
+
+  // Write all results in a single fast transaction (DB writes only)
+  return prisma.$transaction(async (tx) => {
+    // Re-check status inside transaction to prevent races
+    const current = await tx.event.findUnique({
+      where: { id: eventId },
+      select: { status: true },
+    });
+    if (current?.status !== "RAW") {
       return {
         success: true,
         eventId,
         artifacts: [],
         totalLLMRuns: 0,
         skipped: true,
-        skipReason: `Event not in RAW status (current: ${event.status})`,
+        skipReason: `Event status changed to ${current?.status} during enrichment`,
       };
     }
 
-    // Build evidence context
-    const evidenceText = buildEvidenceText(event.evidence);
-
-    // Generate artifacts
-    const generatedArtifacts: ArtifactType[] = [];
-    let llmRunCount = 0;
-
-    for (const artifactType of ENRICHMENT_ARTIFACTS) {
-      log(`Generating ${artifactType} artifact for event ${eventId}`);
-
-      // Build prompt
-      const promptBuilder = PROMPTS[artifactType] as (title: string, evidenceText: string) => string;
-      const prompt = promptBuilder(event.title, evidenceText);
-      const promptHash = hashString(prompt);
-      const inputHash = hashString(evidenceText);
-
-      // Call LLM and measure latency
-      const startTime = Date.now();
-      let response: LLMResponse;
-      try {
-        response = await client.complete(prompt);
-      } catch (error) {
-        log(`LLM call failed for ${artifactType}: ${error}`);
-        throw error;
-      }
-      const latencyMs = Date.now() - startTime;
-
-      // Parse and validate response
-      let payload: unknown;
-      try {
-        payload = parseAndValidateResponse(response.content, artifactType);
-      } catch (error) {
-        log(`Failed to parse ${artifactType} response: ${error}`);
-        throw new Error(
-          `Failed to parse ${artifactType} response: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-
-      // Calculate cost
-      const costCents = calculateCost(
-        client.provider,
-        response.usage.inputTokens,
-        response.usage.outputTokens
-      );
-
-      // Generate run ID for linking artifact to LLM run
-      const runId = crypto.randomUUID();
-
+    for (const result of artifactResults) {
       // Create LLM run record
       await tx.lLMRun.create({
         data: {
-          id: runId,
+          id: result.runId,
           provider: client.provider,
           model: client.model,
-          inputTokens: response.usage.inputTokens,
-          outputTokens: response.usage.outputTokens,
-          totalTokens: response.usage.totalTokens,
-          costCents,
-          latencyMs,
-          promptHash,
-          inputHash,
+          inputTokens: result.response.usage.inputTokens,
+          outputTokens: result.response.usage.outputTokens,
+          totalTokens: result.response.usage.totalTokens,
+          costCents: result.costCents,
+          latencyMs: result.latencyMs,
+          promptHash: result.promptHash,
+          inputHash: result.inputHash,
           processorName: PROCESSOR_NAME,
           eventId,
         },
@@ -371,21 +412,16 @@ export async function enrichEvent(
       await tx.eventArtifact.create({
         data: {
           eventId,
-          artifactType,
+          artifactType: result.artifactType,
           version: 1,
-          payload: payload as object,
+          payload: result.payload as object,
           modelUsed: client.model,
           promptVersion: PROMPT_VERSION,
-          promptHash,
-          inputHash,
-          runId,
+          promptHash: result.promptHash,
+          inputHash: result.inputHash,
+          runId: result.runId,
         },
       });
-
-      generatedArtifacts.push(artifactType);
-      llmRunCount++;
-
-      log(`Created ${artifactType} artifact for event ${eventId} (cost: ${costCents} cents)`);
     }
 
     // Update event status to ENRICHED
@@ -400,17 +436,18 @@ export async function enrichEvent(
         eventId,
         fromStatus: "RAW",
         toStatus: "ENRICHED",
-        reason: `Completed enrichment with ${generatedArtifacts.length} artifacts`,
+        reason: `Completed enrichment with ${artifactResults.length} artifacts`,
       },
     });
 
+    const generatedArtifacts = artifactResults.map((r) => r.artifactType);
     log(`Event ${eventId} enriched successfully with ${generatedArtifacts.length} artifacts`);
 
     return {
       success: true,
       eventId,
       artifacts: generatedArtifacts,
-      totalLLMRuns: llmRunCount,
+      totalLLMRuns: artifactResults.length,
     };
   });
 }

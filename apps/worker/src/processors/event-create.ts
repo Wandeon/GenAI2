@@ -21,6 +21,7 @@ export interface EventCreateJob {
   titleHr?: string;
   occurredAt: string; // ISO date string from queue
   impactLevel?: string;
+  matchedEventId?: string;
 }
 
 export interface EventCreateInput {
@@ -31,6 +32,7 @@ export interface EventCreateInput {
   sourceId: string;
   snapshotId: string;
   impactLevel?: ImpactLevel;
+  matchedEventId?: string;
 }
 
 export interface EventCreateResult {
@@ -116,8 +118,39 @@ export function generateFingerprint(
 export async function createEvent(
   input: EventCreateInput
 ): Promise<EventCreateResult> {
-  const { title, titleHr, occurredAt, sourceType, sourceId, snapshotId, impactLevel } =
+  const { title, titleHr, occurredAt, sourceType, sourceId, snapshotId, impactLevel, matchedEventId } =
     input;
+
+  // Fast path: if event-cluster already matched to an existing event
+  if (matchedEventId) {
+    const matched = await prisma.$transaction(async (tx) => {
+      const existingEvent = await tx.event.findUnique({
+        where: { id: matchedEventId },
+      });
+
+      if (!existingEvent) {
+        log(`Matched event ${matchedEventId} not found, falling through to fingerprint path`);
+        return null; // Signal to fall through
+      }
+
+      log(`Adding SUPPORTING evidence to cluster-matched event ${matchedEventId}`);
+      // Check for duplicate evidence link (idempotency)
+      const existingEvidence = await tx.eventEvidence.findUnique({
+        where: { eventId_snapshotId: { eventId: matchedEventId, snapshotId } },
+      });
+      if (!existingEvidence) {
+        await tx.eventEvidence.create({
+          data: { eventId: matchedEventId, snapshotId, role: "SUPPORTING" },
+        });
+      }
+      return { eventId: matchedEventId, created: false, fingerprint: existingEvent.fingerprint };
+    });
+
+    if (matched) {
+      return matched;
+    }
+    // matched event was deleted — fall through to fingerprint-based path
+  }
 
   // Generate fingerprint for deduplication
   const fingerprint = generateFingerprint(title, occurredAt, sourceType);
@@ -203,7 +236,7 @@ export async function createEvent(
 export async function processEventCreate(
   job: Job<EventCreateJob>
 ): Promise<EventCreateResult> {
-  const { snapshotId, sourceType, sourceId, title, titleHr, occurredAt, impactLevel } =
+  const { snapshotId, sourceType, sourceId, title, titleHr, occurredAt, impactLevel, matchedEventId } =
     job.data;
 
   log(`Processing event create for snapshot ${snapshotId}`);
@@ -216,6 +249,7 @@ export async function processEventCreate(
     sourceId,
     snapshotId,
     impactLevel: impactLevel as ImpactLevel | undefined,
+    matchedEventId,
   });
 
   log(

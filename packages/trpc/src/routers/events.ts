@@ -49,7 +49,8 @@ function toNormalizedEvent(event: any): NormalizedEvent {
     titleHr: event.titleHr || undefined,
     occurredAt: event.occurredAt,
     impactLevel: event.impactLevel,
-    sourceCount: event.evidence?.length || 1,
+    sourceCount: event.sourceCount ?? event.evidence?.length ?? 1,
+    confidence: event.confidence ?? null,
     topics: event.topics?.map((t: any) => t.topic?.slug || t.topicId) || [],
     status: event.status,
     headline: headlineArtifact?.payload?.en,
@@ -69,6 +70,7 @@ export const eventsRouter = router({
         beforeTime: z.date().optional(),
         status: EventStatus.optional(),
         topicSlug: z.string().optional(),
+        confidence: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -95,6 +97,10 @@ export const eventsRouter = router({
             topic: { slug: input.topicSlug },
           },
         };
+      }
+
+      if (input.confidence) {
+        where.confidence = input.confidence;
       }
 
       const events = await ctx.db.event.findMany({

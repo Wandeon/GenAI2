@@ -38,6 +38,12 @@ enum ImpactLevel {
   MEDIUM // Notable but not urgent
   LOW // Background noise, minor update
 }
+
+enum ConfidenceLevel {
+  HIGH   // 3+ sources or AUTHORITATIVE tier
+  MEDIUM // 2 sources or standard-tier primary
+  LOW    // Single non-authoritative source
+}
 enum EvidenceRole {
   PRIMARY // Main source for this event
   SUPPORTING // Additional confirmation
@@ -134,6 +140,8 @@ model Event {
   titleHr    String?
   impactLevel ImpactLevel @default(MEDIUM)
   importance  Float       @default(0)
+  confidence  ConfidenceLevel?
+  sourceCount Int             @default(1) // cached count of evidence links
   status        EventStatus         @default(RAW)
   statusHistory EventStatusChange[]
   evidence  EventEvidence[]

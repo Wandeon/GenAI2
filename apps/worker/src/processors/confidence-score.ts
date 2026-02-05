@@ -1,0 +1,245 @@
+import type { Job, ConnectionOptions } from "bullmq";
+import { Worker } from "bullmq";
+import { prisma } from "@genai/db";
+import type { EventStatus } from "@genai/db";
+import {
+  computeConfidence,
+  confidenceToStatus,
+} from "@genai/shared/confidence";
+import type { TrustTier, EvidenceTrustProfile } from "@genai/shared/confidence";
+
+// ============================================================================
+// CONFIDENCE SCORE PROCESSOR
+// ============================================================================
+// Runs after event-create. Evaluates evidence trust profiles to compute
+// a confidence level and apply the publish gate.
+//
+// Implements Architecture Constitution:
+// #1: EVIDENCE FIRST - Confidence derived from evidence chain
+// #2: APPEND-ONLY STATE MACHINE - Status transitions follow the defined rules
+// #7: SAFETY GATES ON RELATIONSHIPS - High-risk claims need AUTHORITATIVE or 2+ sources
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+export interface ConfidenceScoreJob {
+  eventId: string;
+}
+
+export interface ConfidenceScoreResult {
+  eventId: string;
+  confidence: string;
+  sourceCount: number;
+  newStatus: string;
+}
+
+// ============================================================================
+// LOGGING
+// ============================================================================
+
+/**
+ * Simple tagged logger for confidence-score processor.
+ * Suppresses logs during tests, uses consistent prefix for filtering.
+ */
+function log(message: string): void {
+  process.env.NODE_ENV !== "test" &&
+    console.log(`[confidence-score] ${message}`);
+}
+
+// ============================================================================
+// STATUS TRANSITION LOGIC
+// ============================================================================
+
+/**
+ * Determine if a status transition is allowed.
+ *
+ * Rules:
+ * - RAW events can transition to PUBLISHED or QUARANTINED
+ * - QUARANTINED events can upgrade to PUBLISHED (confidence improved)
+ * - Already-PUBLISHED events are never regressed
+ * - ENRICHED/VERIFIED events can transition to PUBLISHED or QUARANTINED
+ * - BLOCKED events are never changed by this processor
+ */
+function shouldTransition(
+  currentStatus: EventStatus,
+  gateStatus: "PUBLISHED" | "QUARANTINED"
+): boolean {
+  // Never touch BLOCKED events
+  if (currentStatus === "BLOCKED") return false;
+
+  // Never regress PUBLISHED events
+  if (currentStatus === "PUBLISHED") return false;
+
+  // Allow upgrade from QUARANTINED to PUBLISHED only
+  if (currentStatus === "QUARANTINED") {
+    return gateStatus === "PUBLISHED";
+  }
+
+  // RAW, ENRICHED, VERIFIED can all transition
+  return true;
+}
+
+// ============================================================================
+// MAIN PROCESSOR FUNCTION
+// ============================================================================
+
+/**
+ * Score confidence for an event based on its evidence chain.
+ *
+ * This function:
+ * 1. Loads event with all evidence -> snapshot -> source (for trust tier)
+ * 2. Builds EvidenceTrustProfile from evidence
+ * 3. Calls computeConfidence() to determine confidence level
+ * 4. Applies publish gate via confidenceToStatus()
+ * 5. Updates Event.confidence, Event.sourceCount, and Event.status
+ * 6. Creates EventStatusChange audit log when transitioning
+ *
+ * Uses prisma.$transaction for atomicity on status changes.
+ *
+ * @param eventId - The event to score
+ * @returns Scoring result with confidence, sourceCount, and status
+ */
+export async function scoreConfidence(
+  eventId: string
+): Promise<ConfidenceScoreResult> {
+  log(`Scoring confidence for event ${eventId}`);
+
+  // Load event with full evidence chain
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      evidence: {
+        include: {
+          snapshot: {
+            include: {
+              source: {
+                select: { trustTier: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!event) {
+    throw new Error(`Event ${eventId} not found`);
+  }
+
+  // Build trust profile from evidence chain
+  const tiers: TrustTier[] = event.evidence.map(
+    (ev) => ev.snapshot.source.trustTier as TrustTier
+  );
+
+  const profile: EvidenceTrustProfile = {
+    sourceCount: event.evidence.length,
+    tiers,
+  };
+
+  // Compute confidence and gate status
+  const confidence = computeConfidence(profile);
+  const gateStatus = confidenceToStatus(confidence);
+  const sourceCount = event.evidence.length;
+
+  log(
+    `Event ${eventId}: ${sourceCount} source(s), tiers=[${tiers.join(",")}], ` +
+      `confidence=${confidence}, gate=${gateStatus}, current=${event.status}`
+  );
+
+  // Perform atomic update
+  return prisma.$transaction(async (tx) => {
+    // Re-read status inside transaction to prevent races
+    const current = await tx.event.findUnique({
+      where: { id: eventId },
+      select: { status: true },
+    });
+
+    if (!current) {
+      throw new Error(`Event ${eventId} not found during transaction`);
+    }
+
+    const freshStatus = current.status as EventStatus;
+    const transitionAllowed = shouldTransition(freshStatus, gateStatus);
+    const newStatus = transitionAllowed ? gateStatus : freshStatus;
+
+    // Always update cached confidence and sourceCount
+    await tx.event.update({
+      where: { id: eventId },
+      data: {
+        confidence,
+        sourceCount,
+        ...(transitionAllowed ? { status: gateStatus } : {}),
+      },
+    });
+
+    // Create audit log entry if status changed
+    if (transitionAllowed) {
+      await tx.eventStatusChange.create({
+        data: {
+          eventId,
+          fromStatus: freshStatus,
+          toStatus: gateStatus,
+          reason:
+            `Confidence scoring: ${confidence} (${sourceCount} source(s), ` +
+            `tiers: [${tiers.join(", ")}])`,
+          changedBy: "confidence-score-processor",
+        },
+      });
+
+      log(
+        `Event ${eventId} transitioned: ${freshStatus} -> ${gateStatus}`
+      );
+    } else {
+      log(
+        `Event ${eventId} status unchanged at ${freshStatus} ` +
+          `(gate=${gateStatus}, transition not allowed)`
+      );
+    }
+
+    return {
+      eventId,
+      confidence,
+      sourceCount,
+      newStatus,
+    };
+  });
+}
+
+// ============================================================================
+// BULLMQ JOB PROCESSOR
+// ============================================================================
+
+/**
+ * Process a confidence score job from the queue.
+ *
+ * @param job - The BullMQ job containing event data
+ * @returns Scoring result
+ */
+export async function processConfidenceScore(
+  job: Job<ConfidenceScoreJob>
+): Promise<ConfidenceScoreResult> {
+  const { eventId } = job.data;
+
+  log(`Processing confidence score job for event ${eventId}`);
+
+  return scoreConfidence(eventId);
+}
+
+// ============================================================================
+// WORKER FACTORY
+// ============================================================================
+
+/**
+ * Create a BullMQ worker for confidence scoring.
+ *
+ * @param connection - Redis connection options
+ * @returns The worker instance
+ */
+export function createConfidenceScoreWorker(
+  connection: ConnectionOptions
+): Worker {
+  return new Worker("confidence-score", processConfidenceScore, {
+    connection,
+  });
+}

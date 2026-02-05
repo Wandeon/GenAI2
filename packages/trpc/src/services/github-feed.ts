@@ -30,19 +30,13 @@ interface GitHubRepo {
 export async function fetchGitHubTrending(): Promise<NormalizedEvent[]> {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const dateStr = sevenDaysAgo.toISOString().split("T")[0];
-
-  const topicQuery = AI_TOPICS.map((t) => `topic:${t}`).join(" OR ");
-  const query = encodeURIComponent(
-    `${topicQuery} pushed:>${dateStr} stars:>100`
-  );
+  const dateStr = sevenDaysAgo.toISOString().slice(0, 10);
 
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
     "User-Agent": "GenAI-Observatory/2.0",
   };
 
-  // Use token if available for higher rate limits (5000/hr vs 10/min)
   const token = process.env.GITHUB_TOKEN;
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -50,54 +44,68 @@ export async function fetchGitHubTrending(): Promise<NormalizedEvent[]> {
     log("GITHUB_TOKEN not set, using unauthenticated API (10 req/min limit)");
   }
 
-  const url = `${GITHUB_SEARCH_URL}?q=${query}&sort=stars&order=desc&per_page=30`;
+  // GitHub Search doesn't support multiple topic: with OR.
+  // Fetch each topic separately and deduplicate by repo id.
+  const seenIds = new Set<number>();
+  const allRepos: GitHubRepo[] = [];
 
-  try {
-    const res = await fetch(url, { headers });
+  for (const topic of AI_TOPICS) {
+    const query = encodeURIComponent(`topic:${topic} pushed:>${dateStr} stars:>100`);
+    const url = `${GITHUB_SEARCH_URL}?q=${query}&sort=stars&order=desc&per_page=10`;
 
-    if (!res.ok) {
-      const remaining = res.headers.get("x-ratelimit-remaining");
-      log(`GitHub API error: ${res.status} ${res.statusText} (rate-limit remaining: ${remaining})`);
-      if (res.status === 403 && remaining === "0") {
-        const resetAt = res.headers.get("x-ratelimit-reset");
-        log(`Rate limited. Resets at ${resetAt ? new Date(Number(resetAt) * 1000).toISOString() : "unknown"}`);
+    try {
+      const res = await fetch(url, { headers });
+
+      if (!res.ok) {
+        const remaining = res.headers.get("x-ratelimit-remaining");
+        log(`GitHub API error for topic ${topic}: ${res.status} (remaining: ${remaining})`);
+        continue;
       }
-      return [];
+
+      const data = await res.json();
+      const repos: GitHubRepo[] = data.items || [];
+
+      for (const repo of repos) {
+        if (!seenIds.has(repo.id)) {
+          seenIds.add(repo.id);
+          allRepos.push(repo);
+        }
+      }
+    } catch (error) {
+      log(`Fetch error for topic ${topic}: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    const data = await res.json();
-    const repos: GitHubRepo[] = data.items || [];
-
-    log(`Fetched ${repos.length} trending repos`);
-
-    return repos.map((repo) => {
-      const rawItem: RawFeedItem = {
-        sourceType: "GITHUB",
-        externalId: String(repo.id),
-        url: repo.html_url,
-        title: `${repo.full_name}: ${repo.description || repo.name}`,
-        author: repo.owner.login,
-        publishedAt: new Date(repo.pushed_at),
-        score: repo.stargazers_count,
-        tags: repo.topics,
-      };
-
-      return {
-        id: `gh-${repo.id}`,
-        sourceType: "GITHUB" as const,
-        externalId: String(repo.id),
-        url: repo.html_url,
-        title: rawItem.title,
-        occurredAt: rawItem.publishedAt,
-        impactLevel: calculateImpactLevel(rawItem),
-        sourceCount: 1,
-        topics: repo.topics.slice(0, 5).length > 0
-          ? repo.topics.slice(0, 5)
-          : extractTopics(rawItem),
-      };
-    });
-  } catch (error) {
-    log(`Fetch error: ${error instanceof Error ? error.message : String(error)}`);
-    return [];
   }
+
+  // Sort by stars descending, take top 30
+  allRepos.sort((a, b) => b.stargazers_count - a.stargazers_count);
+  const topRepos = allRepos.slice(0, 30);
+
+  log(`Fetched ${topRepos.length} trending repos (${allRepos.length} total across ${AI_TOPICS.length} topics)`);
+
+  return topRepos.map((repo) => {
+    const rawItem: RawFeedItem = {
+      sourceType: "GITHUB",
+      externalId: String(repo.id),
+      url: repo.html_url,
+      title: `${repo.full_name}: ${repo.description || repo.name}`,
+      author: repo.owner.login,
+      publishedAt: new Date(repo.pushed_at),
+      score: repo.stargazers_count,
+      tags: repo.topics,
+    };
+
+    return {
+      id: `gh-${repo.id}`,
+      sourceType: "GITHUB" as const,
+      externalId: String(repo.id),
+      url: repo.html_url,
+      title: rawItem.title,
+      occurredAt: rawItem.publishedAt,
+      impactLevel: calculateImpactLevel(rawItem),
+      sourceCount: 1,
+      topics: repo.topics.slice(0, 5).length > 0
+        ? repo.topics.slice(0, 5)
+        : extractTopics(rawItem),
+    };
+  });
 }

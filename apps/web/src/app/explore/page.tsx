@@ -40,11 +40,26 @@ export default function ExplorePage() {
     { enabled: debouncedQuery.length < 2 }
   );
 
+  const { data: recentSearches } = trpc.sessions.getRecentSearches.useQuery(
+    undefined,
+    { enabled: debouncedQuery.length < 2 }
+  );
+
+  const addRecentSearch = trpc.sessions.addRecentSearch.useMutation();
+
   const handleSelect = useCallback(
-    (slug: string) => {
+    (slug: string, name?: string, type?: string) => {
+      if (name && type) {
+        addRecentSearch.mutate({
+          query: debouncedQuery || slug,
+          slug,
+          name,
+          type,
+        });
+      }
       router.push(`/explore/${slug}`);
     },
-    [router]
+    [router, debouncedQuery, addRecentSearch]
   );
 
   const toggleType = (type: EntityTypeKey) => {
@@ -67,7 +82,8 @@ export default function ExplorePage() {
       setActiveIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
-      handleSelect(results[activeIndex].slug);
+      const r = results[activeIndex];
+      handleSelect(r.slug, r.name, r.type);
     }
   };
 
@@ -132,7 +148,7 @@ export default function ExplorePage() {
               <li key={entity.id} role="option" aria-selected={i === activeIndex}>
                 <button
                   ref={(el) => { resultRefs.current[i] = el; }}
-                  onClick={() => handleSelect(entity.slug)}
+                  onClick={() => handleSelect(entity.slug, entity.name, entity.type)}
                   className={`w-full text-left p-3 rounded-md transition-colors flex items-center gap-3 ${
                     i === activeIndex ? "bg-accent" : "hover:bg-accent"
                   }`}
@@ -161,6 +177,28 @@ export default function ExplorePage() {
         <p className="mt-4 text-muted-foreground">
           Nema rezultata za &quot;{debouncedQuery}&quot;
         </p>
+      )}
+
+      {/* Recent searches (when search is empty) */}
+      {showPopular && recentSearches && recentSearches.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-4">Nedavno pretrazivano</h2>
+          <div className="flex flex-wrap gap-2">
+            {recentSearches.map((search) => {
+              const config = getTypeConfig(search.type);
+              return (
+                <button
+                  key={search.slug}
+                  onClick={() => handleSelect(search.slug, search.name, search.type)}
+                  className="px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-sm flex items-center gap-1.5 transition-colors"
+                >
+                  <span className={config.textColor}>{config.icon}</span>
+                  {search.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Popular entities (when search is empty) */}

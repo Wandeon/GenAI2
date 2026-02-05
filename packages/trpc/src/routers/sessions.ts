@@ -157,6 +157,91 @@ export const sessionsRouter = router({
     }),
 
   /**
+   * Add a recent entity search to session preferences
+   * Stores up to 8 entries, deduped by slug, newest first
+   */
+  addRecentSearch: publicProcedure
+    .input(
+      z.object({
+        query: z.string().min(1),
+        slug: z.string().min(1),
+        name: z.string().min(1),
+        type: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.sessionId) {
+        return { success: false };
+      }
+
+      const current = await ctx.db.anonSession.findUnique({
+        where: { id: ctx.sessionId },
+        select: { preferences: true },
+      });
+
+      const prefs =
+        typeof current?.preferences === "object" && current.preferences !== null
+          ? (current.preferences as Record<string, unknown>)
+          : {};
+
+      const existing = Array.isArray(prefs.recentSearches)
+        ? (prefs.recentSearches as Array<Record<string, unknown>>)
+        : [];
+
+      const entry = {
+        query: input.query,
+        slug: input.slug,
+        name: input.name,
+        type: input.type,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Remove duplicate by slug, prepend new entry, cap at 8
+      const filtered = existing.filter((e) => e.slug !== input.slug);
+      const updated = [entry, ...filtered].slice(0, 8);
+
+      await ctx.db.anonSession.update({
+        where: { id: ctx.sessionId },
+        data: {
+          preferences: { ...prefs, recentSearches: updated } as object,
+        },
+      });
+
+      return { success: true };
+    }),
+
+  /**
+   * Get recent entity searches from session preferences
+   */
+  getRecentSearches: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.sessionId) {
+      return [];
+    }
+
+    const session = await ctx.db.anonSession.findUnique({
+      where: { id: ctx.sessionId },
+      select: { preferences: true },
+    });
+
+    const prefs =
+      typeof session?.preferences === "object" && session.preferences !== null
+        ? (session.preferences as Record<string, unknown>)
+        : {};
+
+    if (!Array.isArray(prefs.recentSearches)) {
+      return [];
+    }
+
+    return prefs.recentSearches as Array<{
+      query: string;
+      slug: string;
+      name: string;
+      type: string;
+      timestamp: string;
+    }>;
+  }),
+
+  /**
    * Mark last seen timestamp
    * Called periodically to track activity
    */

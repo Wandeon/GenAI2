@@ -60,6 +60,7 @@ export const NormalizedEventSchema = z.object({
   occurredAt: z.date(),
   impactLevel: ImpactLevelSchema,
   sourceCount: z.number(),
+  confidence: z.enum(["HIGH", "MEDIUM", "LOW"]).nullable().optional(),
   topics: z.array(z.string()),
   // Phase 3: Database fields
   status: EventStatusSchema.optional(),

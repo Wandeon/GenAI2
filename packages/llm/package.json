@@ -22,7 +22,6 @@
     "test": "echo \"No tests yet for @genai/llm\""
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {

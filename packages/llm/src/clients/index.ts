@@ -1,5 +1,10 @@
 export {
-  createGeminiClient,
-  calculateGeminiCost,
+  createLLMClient,
+  createDefaultLLMClient,
+  calculateLLMCost,
   hashString,
-} from "./gemini";
+} from "./openai-compat";
+
+// Backward-compat aliases used by processors
+export { calculateLLMCost as calculateGeminiCost } from "./openai-compat";
+export { createDefaultLLMClient as createGeminiClient } from "./openai-compat";

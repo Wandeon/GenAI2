@@ -432,14 +432,8 @@ export async function processEventEnrich(
   log(`Processing event enrich for ${eventId}`);
 
   // Get LLM client from environment
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GOOGLE_AI_API_KEY environment variable is required");
-  }
-
-  // Import dynamically to avoid circular dependencies
-  const { createGeminiClient } = await import("@genai/llm");
-  const client = createGeminiClient(apiKey);
+  const { createDefaultLLMClient } = await import("@genai/llm");
+  const client = createDefaultLLMClient();
 
   return enrichEvent({ eventId }, client);
 }

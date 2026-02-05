@@ -87,8 +87,13 @@ services:
       PRODUCTHUNT_API_KEY: ${PRODUCTHUNT_API_KEY:-}
       PRODUCTHUNT_API_SECRET: ${PRODUCTHUNT_API_SECRET:-}
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
-      # LLM for daily briefing processor
-      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      # LLM - Ollama Cloud (primary) + DeepSeek (fallback)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      LLM_MODEL_FAST: ${LLM_MODEL_FAST:-gemini-3-flash-preview}
+      LLM_MODEL_QUALITY: ${LLM_MODEL_QUALITY:-gemini-3-pro-preview}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      LLM_MODEL_BACKUP: ${LLM_MODEL_BACKUP:-deepseek-v3.2}
     depends_on:
       postgres:
         condition: service_healthy

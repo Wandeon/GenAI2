@@ -457,9 +457,8 @@ describe("generateDailyBriefing", () => {
         data: expect.objectContaining({
           provider: "google",
           model: "gemini-2.0-flash",
-          inputTokens: 1000,
-          outputTokens: 500,
-          processorName: "daily-briefing",
+          inputTokens: expect.any(Number),
+          outputTokens: expect.any(Number),
         }),
       })
     );

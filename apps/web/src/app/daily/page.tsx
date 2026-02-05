@@ -12,7 +12,7 @@ import { RoundtableSection } from "@/components/daily/roundtable-section";
 // Roundtable turn from Council discussion
 interface RoundtableTurn {
   persona: "GM" | "Engineer" | "Skeptic";
-  moveType: "SETUP" | "TECH_READ" | "RISK_CHECK" | "CROSS_EXAM" | "EVIDENCE_CALL" | "TAKEAWAY";
+  moveType: "SETUP" | "TECH_READ" | "RISK_CHECK" | "CROSS_EXAM" | "EVIDENCE_CALL" | "TAKEAWAY" | "CUT";
   text: string;
   textHr: string;
   eventRef?: number;

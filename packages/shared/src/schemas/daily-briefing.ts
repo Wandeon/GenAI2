@@ -27,6 +27,7 @@ export const RoundtableTurn = z.object({
     "CROSS_EXAM",
     "EVIDENCE_CALL",
     "TAKEAWAY",
+    "CUT",
   ]),
   text: z.string(),
   textHr: z.string(),
@@ -48,7 +49,7 @@ export type RoundtableTurn = z.infer<typeof RoundtableTurn>;
  */
 export const DailyBriefingPayload = z.object({
   // New: Council Roundtable discussion (v2.0.0+)
-  roundtable: z.array(RoundtableTurn).min(4).max(10).optional(),
+  roundtable: z.array(RoundtableTurn).min(4).max(20).optional(),
 
   // Legacy: what changed since yesterday (deprecated, kept for old briefings)
   changedSince: z
@@ -77,6 +78,17 @@ export const DailyBriefingPayload = z.object({
   eventCount: z.number().int().nonnegative(),
   sourceCount: z.number().int().nonnegative(),
   topEntities: z.array(z.string()).max(5),
+
+  // Multi-turn generation metadata (v3.0.0+)
+  generationMeta: z
+    .object({
+      totalTurns: z.number().int(),
+      totalInputTokens: z.number().int(),
+      totalOutputTokens: z.number().int(),
+      turnCount: z.number().int(),
+      fallbackUsed: z.boolean(),
+    })
+    .optional(),
 });
 
 export type DailyBriefingPayload = z.infer<typeof DailyBriefingPayload>;

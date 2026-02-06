@@ -97,7 +97,7 @@ export default function ExplorePage() {
   const showPopular = debouncedQuery.length < 2;
 
   return (
-    <div className="p-4 md:p-6 max-w-[720px] mx-auto">
+    <div className="p-4 md:p-6 max-w-[720px] mx-auto pb-20 md:pb-0">
       <h1 className="text-2xl font-bold mb-6">Dossier</h1>
 
       {/* Search input */}

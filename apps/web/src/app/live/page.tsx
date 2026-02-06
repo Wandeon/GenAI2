@@ -66,7 +66,7 @@ export default function LivePage() {
   };
 
   return (
-    <div className="max-w-[720px] mx-auto px-4 py-6">
+    <div className="max-w-[720px] mx-auto px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-xl font-semibold mb-1">Intel</h1>
       <p className="text-sm font-mono text-muted-foreground mb-4">
         Svi dogadaji, kronoloski

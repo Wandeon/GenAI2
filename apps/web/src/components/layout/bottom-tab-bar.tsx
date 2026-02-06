@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Newspaper, Radio } from "lucide-react";
+import { Newspaper, Radio, Search } from "lucide-react";
 import { cn } from "@genai/ui";
 
 const tabs = [
-  { href: "/daily", label: "Dnevni", icon: Newspaper },
-  { href: "/live", label: "Uzivo", icon: Radio },
+  { href: "/daily", label: "Briefing", icon: Newspaper },
+  { href: "/live", label: "Intel", icon: Radio },
+  { href: "/explore", label: "Dossier", icon: Search },
 ] as const;
 
 export function BottomTabBar() {

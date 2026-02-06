@@ -16,7 +16,7 @@ export default function LivePage() {
 
   return (
     <div className="max-w-[720px] mx-auto px-4 py-6">
-      <h1 className="text-xl font-semibold mb-1">Uzivo</h1>
+      <h1 className="text-xl font-semibold mb-1">Intel</h1>
       <p className="text-sm font-mono text-muted-foreground mb-6">
         Svi dogadaji, kronoloski
       </p>

@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/trpc";
 import { EventsTimeline } from "@/components/entity/events-timeline";
 import { RelatedEntities } from "@/components/entity/related-entities";
-import { EntityGraph } from "@/components/entity/entity-graph";
+import { RelationshipTimeline } from "@/components/entity/relationship-timeline";
 import { getTypeConfig } from "@/components/entity/type-config";
 import { MentionSparkline } from "@/components/entity/mention-sparkline";
 
@@ -92,9 +92,9 @@ export default function EntityDossierPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Graph section - hidden on mobile (low value for touch) */}
-      <section className="mt-8 hidden md:block">
-        <EntityGraph entityId={entity.id} entityName={entity.name} />
+      {/* Relationship timeline */}
+      <section className="mt-8">
+        <RelationshipTimeline entityId={entity.id} entityName={entity.name} />
       </section>
     </div>
   );

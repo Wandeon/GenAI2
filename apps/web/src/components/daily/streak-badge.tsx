@@ -37,7 +37,7 @@ export function DailyStreakBadge() {
   if (streak <= 1) return null;
 
   return (
-    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+    <span className="bg-amber-50 text-amber-700 font-mono text-xs px-2 py-0.5 rounded-full">
       {streak} dana zaredom
     </span>
   );

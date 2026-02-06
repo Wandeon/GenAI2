@@ -1,15 +1,22 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/trpc";
 import { DailyStreakBadge } from "@/components/daily/streak-badge";
-import { RoundtableTeaser } from "@/components/daily/roundtable-teaser";
-import { RankedEventList } from "@/components/daily/ranked-event-list";
+import { CouncilHero } from "@/components/daily/council-hero";
+import { RankedCards } from "@/components/daily/ranked-cards";
 
 interface RoundtableTurn {
   persona: "GM" | "Engineer" | "Skeptic";
-  moveType: "SETUP" | "TECH_READ" | "RISK_CHECK" | "CROSS_EXAM" | "EVIDENCE_CALL" | "TAKEAWAY" | "CUT";
+  moveType:
+    | "SETUP"
+    | "TECH_READ"
+    | "RISK_CHECK"
+    | "CROSS_EXAM"
+    | "EVIDENCE_CALL"
+    | "TAKEAWAY"
+    | "CUT";
   text: string;
   textHr: string;
   eventRef?: number;
@@ -65,17 +72,48 @@ export default function DailyRunPage() {
     day: "numeric",
   });
 
+  const hasMissedEvents = catchUp && catchUp.count > 0;
+
   return (
     <div className="max-w-[720px] mx-auto px-4 py-8">
+      {/* Date header */}
       <header className="mb-6">
         <h1 className="text-2xl font-semibold capitalize">{todayFormatted}</h1>
         <div className="flex items-center gap-2 mt-1">
           <span className="font-mono text-sm text-muted-foreground">
-            {payload?.eventCount ?? 0} dogadaja &middot; {payload?.sourceCount ?? 0} izvora
+            {payload?.eventCount ?? 0} dogadaja &middot;{" "}
+            {payload?.sourceCount ?? 0} izvora
           </span>
           <DailyStreakBadge />
         </div>
       </header>
+
+      {/* A. Catch-up status header */}
+      {hasMissedEvents ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-6 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-amber-900">
+              Propustili ste{" "}
+              <span className="font-mono font-semibold">{catchUp.count}</span>{" "}
+              dogadaja visokog utjecaja
+            </p>
+          </div>
+          <Link
+            href="/live"
+            className="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0"
+          >
+            Prikazi
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 mb-6 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <p className="text-sm text-emerald-800">
+            U toku ste sa svim dogadajima
+          </p>
+        </div>
+      )}
 
       {!briefing ? (
         <div className="text-center py-16">
@@ -86,16 +124,18 @@ export default function DailyRunPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* B. Council hero section */}
           {payload?.roundtable && payload.roundtable.length > 0 && (
-            <RoundtableTeaser turns={payload.roundtable} />
+            <CouncilHero turns={payload.roundtable} />
           )}
 
+          {/* C. Top 5 ranked stack */}
           {eventsLoading ? (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex gap-3 py-3 border-b border-border">
-                  <div className="w-6 h-6 bg-card rounded" />
+                  <div className="w-8 h-8 bg-card rounded-full" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-card rounded w-3/4" />
                     <div className="h-3 bg-card rounded w-1/2" />
@@ -104,27 +144,11 @@ export default function DailyRunPage() {
               ))}
             </div>
           ) : briefingWithEvents?.events?.length ? (
-            <RankedEventList events={briefingWithEvents.events} />
+            <RankedCards events={briefingWithEvents.events} />
           ) : (
             <p className="text-muted-foreground text-sm py-4">
               Nema kljucnih dogadaja za danas
             </p>
-          )}
-
-          {catchUp && catchUp.count > 0 && (
-            <div className="border-t border-border pt-6">
-              <p className="text-sm">
-                Propustili ste{" "}
-                <span className="font-mono font-semibold">{catchUp.count}</span>{" "}
-                dogadaja
-              </p>
-              <Link
-                href="/live"
-                className="inline-block mt-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
-              >
-                Nadoknadite
-              </Link>
-            </div>
           )}
         </div>
       )}

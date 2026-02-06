@@ -1,9 +1,60 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { NormalizedEvent } from "@genai/shared";
+import type { NormalizedEvent, SourceType } from "@genai/shared";
 import { trpc } from "@/trpc";
-import { CockpitEventCard } from "./cockpit-event-card";
+import { UnifiedEventCard } from "@/components/events/unified-event-card";
+import type { ImpactLevel, ConfidenceLabel, SourceKind, SourceChip } from "@/components/events/unified-event-card";
+
+// ============================================================================
+// SourceType → SourceKind mapping
+// ============================================================================
+
+const SOURCE_KIND_MAP: Record<SourceType, SourceKind> = {
+  NEWSAPI: "NEWS",
+  ARXIV: "PAPER",
+  HUGGINGFACE: "PAPER",
+  GITHUB: "CODE",
+  DEVTO: "CODE",
+  HN: "DISCUSSION",
+  REDDIT: "DISCUSSION",
+  LOBSTERS: "DISCUSSION",
+  PRODUCTHUNT: "TOOL",
+  LEADERBOARD: "TOOL",
+  YOUTUBE: "VIDEO",
+};
+
+const SOURCE_LABEL_MAP: Record<SourceType, string> = {
+  NEWSAPI: "NewsAPI",
+  ARXIV: "arXiv",
+  HUGGINGFACE: "HuggingFace",
+  GITHUB: "GitHub",
+  DEVTO: "Dev.to",
+  HN: "HN",
+  REDDIT: "Reddit",
+  LOBSTERS: "Lobsters",
+  PRODUCTHUNT: "ProductHunt",
+  LEADERBOARD: "Ljestvica",
+  YOUTUBE: "YouTube",
+};
+
+function buildSourceChip(sourceType: SourceType): SourceChip {
+  return {
+    label: SOURCE_LABEL_MAP[sourceType],
+    kind: SOURCE_KIND_MAP[sourceType],
+  };
+}
+
+function formatTimeHr(date: Date): string {
+  return new Date(date).toLocaleTimeString("hr-HR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface SourceConfig {
   key: string;
@@ -22,6 +73,10 @@ interface SourceSectionProps {
   isLoading?: boolean;
   delay?: number;
 }
+
+// ============================================================================
+// Component
+// ============================================================================
 
 export function SourceSection({
   title,
@@ -86,21 +141,23 @@ export function SourceSection({
                     {events.length}
                   </span>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {events.map((event) => (
-                    <CockpitEventCard
+                    <div
                       key={event.id}
-                      id={event.id}
-                      title={event.title}
-                      titleHr={event.titleHr}
-                      occurredAt={event.occurredAt}
-                      impactLevel={event.impactLevel}
-                      sourceCount={event.sourceCount}
-                      topics={event.topics}
-                      isSelected={selectedEventId === event.id}
-                      onClick={() => onSelectEvent(event)}
                       onMouseEnter={() => utils.events.byId.prefetch(event.id)}
-                    />
+                    >
+                      <UnifiedEventCard
+                        title={event.titleHr ?? event.title}
+                        occurredAtLabel={formatTimeHr(event.occurredAt)}
+                        impactLevel={event.impactLevel as ImpactLevel}
+                        confidenceLabel={(event.confidence as ConfidenceLabel) ?? null}
+                        sourceCount={event.sourceCount}
+                        whatHappened={event.summary}
+                        sources={[buildSourceChip(event.sourceType)]}
+                        onOpen={() => onSelectEvent(event)}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

@@ -188,4 +188,31 @@ export const entitiesRouter = router({
 
       return { nodes, links: filteredLinks };
     }),
+
+  // Get mention velocity (count per day) for sparkline visualization
+  mentionVelocity: publicProcedure
+    .input(
+      z.object({
+        entityId: z.string(),
+        days: z.number().min(1).max(90).default(7),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const since = new Date();
+      since.setDate(since.getDate() - input.days);
+
+      const rows = await ctx.db.$queryRaw<
+        Array<{ date: string; count: number }>
+      >`
+        SELECT DATE(e."occurredAt")::text as date, COUNT(*)::int as count
+        FROM entity_mentions em
+        JOIN events e ON e.id = em."eventId"
+        WHERE em."entityId" = ${input.entityId}
+          AND e."occurredAt" >= ${since}
+        GROUP BY DATE(e."occurredAt")
+        ORDER BY date ASC
+      `;
+
+      return { data: rows };
+    }),
 });

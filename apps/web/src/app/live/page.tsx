@@ -1,7 +1,35 @@
 "use client";
 
-import Link from "next/link";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { cn } from "@genai/ui";
 import { trpc } from "@/trpc";
+import {
+  UnifiedEventCard,
+} from "@/components/events/unified-event-card";
+import type {
+  ImpactLevel,
+  ConfidenceLabel,
+  SourceChip,
+  SourceKind,
+} from "@/components/events/unified-event-card";
+
+// ============================================================================
+// Types & Constants
+// ============================================================================
+
+type FilterKey = "Sve" | "Vijesti" | "Kod" | "Akademski" | "Zajednica" | "Alati";
+
+const FILTERS: FilterKey[] = ["Sve", "Vijesti", "Kod", "Akademski", "Zajednica", "Alati"];
+
+const FILTER_SOURCE_TYPES: Record<FilterKey, string[] | null> = {
+  Sve: null,
+  Vijesti: ["NEWSAPI"],
+  Kod: ["GITHUB", "DEVTO"],
+  Akademski: ["ARXIV", "HUGGINGFACE"],
+  Zajednica: ["HN", "REDDIT", "LOBSTERS"],
+  Alati: ["PRODUCTHUNT", "YOUTUBE", "LEADERBOARD"],
+};
 
 const SOURCE_LABELS: Record<string, string> = {
   HN: "HN", GITHUB: "GH", ARXIV: "arXiv", NEWSAPI: "News",
@@ -9,65 +37,98 @@ const SOURCE_LABELS: Record<string, string> = {
   DEVTO: "Dev", YOUTUBE: "YT", LEADERBOARD: "LB", HUGGINGFACE: "HF",
 };
 
+const SOURCE_KIND_MAP: Record<string, SourceKind> = {
+  NEWSAPI: "NEWS", ARXIV: "PAPER", HUGGINGFACE: "PAPER",
+  GITHUB: "CODE", DEVTO: "CODE",
+  HN: "DISCUSSION", REDDIT: "DISCUSSION", LOBSTERS: "DISCUSSION",
+  PRODUCTHUNT: "TOOL", LEADERBOARD: "TOOL", YOUTUBE: "VIDEO",
+};
+
+// ============================================================================
+// Component
+// ============================================================================
+
 export default function LivePage() {
+  const router = useRouter();
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("Sve");
   const { data, isLoading } = trpc.events.list.useQuery({ limit: 100 });
 
   const events = data?.items ?? [];
 
+  const filteredEvents = useMemo(() => {
+    const allowedTypes = FILTER_SOURCE_TYPES[activeFilter];
+    if (!allowedTypes) return events;
+    return events.filter((e) => allowedTypes.includes(e.sourceType));
+  }, [events, activeFilter]);
+
+  const handleFilterClick = (key: FilterKey) => {
+    setActiveFilter((prev) => (prev === key ? "Sve" : key));
+  };
+
   return (
     <div className="max-w-[720px] mx-auto px-4 py-6">
-      <h1 className="text-xl font-semibold mb-1">Uzivo</h1>
-      <p className="text-sm font-mono text-muted-foreground mb-6">
+      <h1 className="text-xl font-semibold mb-1">Intel</h1>
+      <p className="text-sm font-mono text-muted-foreground mb-4">
         Svi dogadaji, kronoloski
       </p>
 
+      {/* Filter bar */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+        {FILTERS.map((key) => (
+          <button
+            key={key}
+            onClick={() => handleFilterClick(key)}
+            className={cn(
+              "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+              "min-h-[36px]",
+              activeFilter === key
+                ? "bg-primary text-white"
+                : "bg-card border border-border text-foreground hover:bg-accent",
+            )}
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+
+      {/* Event list */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse py-3 border-b border-border">
+            <div key={i} className="animate-pulse border-l-4 border-zinc-200 rounded-r-lg bg-white p-4">
               <div className="h-4 bg-card rounded w-3/4 mb-2" />
               <div className="h-3 bg-card rounded w-1/2" />
             </div>
           ))}
         </div>
-      ) : events.length === 0 ? (
+      ) : filteredEvents.length === 0 ? (
         <p className="text-muted-foreground text-sm py-8 text-center">
-          Nema objavljenih dogadaja
+          Nema dogadaja za odabrani filter
         </p>
       ) : (
-        <div className="divide-y divide-border">
-          {events.map((event) => {
-            const displayTitle = event.titleHr || event.title;
-            const sourceLabel = SOURCE_LABELS[event.sourceType] || event.sourceType;
-            const showDot = event.impactLevel === "BREAKING" || event.impactLevel === "HIGH";
-            const dotColor = event.impactLevel === "BREAKING" ? "bg-red-500" : "bg-amber-500";
-            const timeStr = new Date(event.occurredAt).toLocaleTimeString("hr-HR", {
+        <div className="space-y-3">
+          {filteredEvents.map((event) => {
+            const timeLabel = new Date(event.occurredAt).toLocaleTimeString("hr-HR", {
               hour: "2-digit",
               minute: "2-digit",
             });
 
+            const sourceLabel = SOURCE_LABELS[event.sourceType] || event.sourceType;
+            const sourceKind = SOURCE_KIND_MAP[event.sourceType] || "NEWS";
+            const sources: SourceChip[] = [{ label: sourceLabel, kind: sourceKind }];
+
             return (
-              <Link
+              <UnifiedEventCard
                 key={event.id}
-                href={`/observatory?event=${event.id}`}
-                className="block py-3 hover:bg-card transition-colors -mx-2 px-2 rounded"
-              >
-                <div className="flex items-center gap-1.5">
-                  {showDot && <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />}
-                  <span className="font-semibold text-sm leading-snug line-clamp-1">
-                    {displayTitle}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 font-mono text-xs text-muted-foreground">
-                  <span>[{sourceLabel}]</span>
-                  <span aria-hidden="true">&middot;</span>
-                  <span>{event.confidence || "MED"}</span>
-                  <span aria-hidden="true">&middot;</span>
-                  <span>{event.sourceCount ?? 1} izvora</span>
-                  <span aria-hidden="true">&middot;</span>
-                  <span>{timeStr}</span>
-                </div>
-              </Link>
+                title={event.titleHr || event.title}
+                occurredAtLabel={timeLabel}
+                impactLevel={event.impactLevel as ImpactLevel}
+                confidenceLabel={(event.confidence as ConfidenceLabel) ?? null}
+                sourceCount={event.sourceCount}
+                whatHappened={event.summary}
+                sources={sources}
+                onOpen={() => router.push(`/observatory?event=${event.id}`)}
+              />
             );
           })}
         </div>

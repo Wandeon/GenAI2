@@ -6,9 +6,9 @@ import { Newspaper, Radio, Search, Eye, LayoutGrid } from "lucide-react";
 import { cn } from "@genai/ui";
 
 const navItems = [
-  { href: "/daily", label: "Dnevni", icon: Newspaper },
-  { href: "/live", label: "Uzivo", icon: Radio },
-  { href: "/explore", label: "Istrazi", icon: Search },
+  { href: "/daily", label: "Briefing", icon: Newspaper },
+  { href: "/live", label: "Intel", icon: Radio },
+  { href: "/explore", label: "Dossier", icon: Search },
   { href: "/watchlists", label: "Pracenje", icon: Eye },
   { href: "/observatory", label: "Observatory", icon: LayoutGrid },
 ] as const;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Sidebar } from "./sidebar";
+import { IconRail } from "./icon-rail";
+import { BottomTabBar } from "./bottom-tab-bar";
 import { Header } from "./header";
 import { ContextPanel } from "./context-panel";
 import { KeyboardNavigation } from "@/components/keyboard-navigation";
@@ -16,21 +17,22 @@ export function ObservatoryShell({ children }: ObservatoryShellProps) {
   const { clearSelection } = useSelection();
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       <KeyboardNavigation />
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <IconRail />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
         <main className="flex-1 overflow-hidden flex">
-          <div className="flex-1 overflow-y-auto p-4 pb-4">
+          <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
             {children}
           </div>
           <ContextPanel onClose={clearSelection} />
         </main>
       </div>
+      <BottomTabBar />
     </div>
   );
 }

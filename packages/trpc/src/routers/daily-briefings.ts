@@ -29,6 +29,31 @@ export const dailyBriefingsRouter = router({
   }),
 
   /**
+   * Get today's briefing, or fall back to the most recent available.
+   * Returns { briefing, isLatest } so the UI can show a stale-data banner.
+   */
+  todayOrLatest: publicProcedure.query(async ({ ctx }) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayBriefing = await ctx.db.dailyBriefing.findUnique({
+      where: { date: today },
+      include: { items: { orderBy: { rank: "asc" } } },
+    });
+
+    if (todayBriefing) {
+      return { briefing: todayBriefing, isLatest: false };
+    }
+
+    const latest = await ctx.db.dailyBriefing.findFirst({
+      orderBy: { date: "desc" },
+      include: { items: { orderBy: { rank: "asc" } } },
+    });
+
+    return { briefing: latest, isLatest: true };
+  }),
+
+  /**
    * Get briefing by date
    */
   byDate: publicProcedure

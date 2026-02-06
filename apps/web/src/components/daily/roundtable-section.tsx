@@ -15,9 +15,9 @@ interface RoundtableSectionProps {
 
 // Persona styling
 const personaStyle: Record<string, { name: string; text: string; border: string }> = {
-  GM: { name: "GM", text: "text-cyan-400", border: "border-l-cyan-500/50" },
-  Engineer: { name: "Engineer", text: "text-green-400", border: "border-l-green-500/50" },
-  Skeptic: { name: "Skeptic", text: "text-amber-400", border: "border-l-amber-500/50" },
+  GM: { name: "GM", text: "text-foreground", border: "border-l-primary" },
+  Engineer: { name: "Engineer", text: "text-muted-foreground", border: "border-l-border" },
+  Skeptic: { name: "Skeptic", text: "text-muted-foreground", border: "border-l-border" },
 };
 
 // Move type labels in Croatian

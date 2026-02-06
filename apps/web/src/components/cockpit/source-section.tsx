@@ -15,7 +15,6 @@ interface SourceConfig {
 interface SourceSectionProps {
   title: string;
   icon: string;
-  glowClass: string;
   sources: SourceConfig[];
   eventsBySource: Map<string, NormalizedEvent[]>;
   selectedEventId?: string;
@@ -27,7 +26,6 @@ interface SourceSectionProps {
 export function SourceSection({
   title,
   icon,
-  glowClass,
   sources,
   eventsBySource,
   selectedEventId,
@@ -47,14 +45,14 @@ export function SourceSection({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4, ease: "easeOut" }}
-      className={`glass-card rounded-2xl overflow-hidden ${glowClass}`}
+      className="bg-card border border-border rounded-xl overflow-hidden"
     >
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="text-lg">{icon}</span>
           <h2 className="font-semibold text-base tracking-wide">{title}</h2>
         </div>
-        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-muted-foreground">
+        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-card text-muted-foreground">
           {totalCount}
         </span>
       </div>

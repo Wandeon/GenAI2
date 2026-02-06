@@ -17,14 +17,10 @@ export function StatusBar({ eventCount, lastUpdate, isLoading }: StatusBarProps)
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-header flex items-center justify-between px-6 py-3 rounded-xl"
+      className="bg-card border border-border flex items-center justify-between px-6 py-3 rounded-xl"
     >
       <div className="flex items-center gap-3">
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
-        </span>
-        <span className="text-sm font-mono text-green-400 uppercase tracking-wider">
+        <span className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
           Uživo
         </span>
       </div>

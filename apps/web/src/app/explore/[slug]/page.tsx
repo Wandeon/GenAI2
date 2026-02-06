@@ -9,6 +9,7 @@ import { EventsTimeline } from "@/components/entity/events-timeline";
 import { RelatedEntities } from "@/components/entity/related-entities";
 import { EntityGraph } from "@/components/entity/entity-graph";
 import { getTypeConfig } from "@/components/entity/type-config";
+import { MentionSparkline } from "@/components/entity/mention-sparkline";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -26,6 +27,11 @@ export default function EntityDossierPage({ params }: PageProps) {
   if (!entity) {
     notFound();
   }
+
+  const { data: velocityData } = trpc.entities.mentionVelocity.useQuery(
+    { entityId: entity.id },
+    { enabled: !!entity }
+  );
 
   const config = getTypeConfig(entity.type);
 
@@ -48,8 +54,9 @@ export default function EntityDossierPage({ params }: PageProps) {
           >
             {config.icon} {entity.type}
           </span>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-muted-foreground text-sm inline-flex items-center gap-2">
             {entity._count.mentions} spominjanja
+            <MentionSparkline data={velocityData?.data ?? []} />
           </span>
         </div>
         <h1 className="text-3xl font-bold">{entity.name}</h1>

@@ -97,14 +97,14 @@ export default function ExplorePage() {
   const showPopular = debouncedQuery.length < 2;
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 max-w-[720px] mx-auto">
       <h1 className="text-2xl font-bold mb-6">Istrazi entitete</h1>
 
       {/* Search input */}
       <input
         type="search"
         placeholder="Pretrazi tvrtke, osobe, projekte..."
-        className="w-full rounded-md border px-4 py-3 bg-background text-lg"
+        className="w-full rounded-md border border-border px-4 py-3 bg-background text-lg focus:ring-2 focus:ring-primary focus:outline-none"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -123,8 +123,8 @@ export default function ExplorePage() {
               onClick={() => toggleType(type)}
               className={`px-3 py-1 rounded-full text-sm border transition-colors ${
                 isActive
-                  ? `${config.bgColor} text-white border-transparent`
-                  : "bg-secondary hover:bg-secondary/80 border-transparent"
+                  ? "bg-primary text-white border-transparent"
+                  : "bg-card border-border hover:bg-card/80"
               }`}
               aria-pressed={isActive}
             >
@@ -190,7 +190,7 @@ export default function ExplorePage() {
                 <button
                   key={search.slug}
                   onClick={() => handleSelect(search.slug, search.name, search.type)}
-                  className="px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-sm flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-1.5 rounded-full bg-card border border-border hover:bg-card/80 text-sm flex items-center gap-1.5 transition-colors"
                 >
                   <span className={config.textColor}>{config.icon}</span>
                   {search.name}
@@ -213,7 +213,7 @@ export default function ExplorePage() {
                   <button
                     key={entity.id}
                     onClick={() => handleSelect(entity.slug)}
-                    className="px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-sm flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-full bg-card border border-border hover:bg-card/80 text-sm flex items-center gap-1.5 transition-colors"
                   >
                     <span className={config.textColor}>{config.icon}</span>
                     {entity.name}

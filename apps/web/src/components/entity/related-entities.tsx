@@ -56,7 +56,7 @@ export function RelatedEntities({ entityId }: RelatedEntitiesProps) {
                     {relationshipTypes.map((rt) => (
                       <span
                         key={rt}
-                        className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded"
+                        className="text-[10px] text-muted-foreground bg-card px-1.5 py-0.5 rounded"
                       >
                         {rt}
                       </span>

@@ -109,8 +109,8 @@ export function EntityGraph({ entityId, entityName }: EntityGraphProps) {
                     onClick={() => toggleTypeFilter(type)}
                     className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
                       isActive
-                        ? `${config.bgColor} text-white border-transparent`
-                        : "bg-secondary hover:bg-secondary/80 border-transparent"
+                        ? "bg-primary text-white border-transparent"
+                        : "bg-card border-border hover:bg-card/80"
                     }`}
                     aria-pressed={isActive}
                   >
@@ -123,7 +123,7 @@ export function EntityGraph({ entityId, entityName }: EntityGraphProps) {
               <select
                 value={relTypeFilter}
                 onChange={(e) => setRelTypeFilter(e.target.value)}
-                className="text-xs rounded border bg-background px-2 py-1"
+                className="text-xs rounded border border-border bg-background px-2 py-1 focus:ring-2 focus:ring-primary focus:outline-none"
                 aria-label="Filtriraj po tipu veze"
               >
                 <option value="">Sve veze</option>

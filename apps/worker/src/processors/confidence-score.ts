@@ -51,10 +51,11 @@ function log(message: string): void {
 // ARTIFACT COMPLETENESS CHECK
 // ============================================================================
 
-// Only HEADLINE + SUMMARY block publishing. WHAT_HAPPENED, WHY_MATTERS, GM_TAKE
+// Only HEADLINE blocks publishing. SUMMARY, WHAT_HAPPENED, WHY_MATTERS, GM_TAKE
 // are presentation enhancements — they enrich the UI but never gate existence.
 // Evidence decides publishability. Artifacts decide richness.
-const REQUIRED_ARTIFACTS = ["HEADLINE", "SUMMARY"] as const;
+// SUMMARY is generated asynchronously and no longer blocks publishing.
+const REQUIRED_ARTIFACTS = ["HEADLINE"] as const;
 
 /**
  * Check if all required artifacts exist for an event.

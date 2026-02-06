@@ -36,7 +36,7 @@ export default function EntityDossierPage({ params }: PageProps) {
   const config = getTypeConfig(entity.type);
 
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-[720px] mx-auto">
+    <div className="min-h-screen p-4 md:p-8 max-w-[720px] mx-auto pb-20 md:pb-0">
       {/* Back link */}
       <Link
         href="/explore"

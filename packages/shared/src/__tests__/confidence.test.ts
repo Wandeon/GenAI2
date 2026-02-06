@@ -44,6 +44,15 @@ describe("computeConfidence", () => {
   });
 });
 
+describe("end-to-end: confidence + status gate", () => {
+  it("single AUTHORITATIVE source publishes (not quarantined)", () => {
+    const profile: EvidenceTrustProfile = { sourceCount: 1, tiers: ["AUTHORITATIVE"] };
+    const confidence = computeConfidence(profile);
+    expect(confidence).toBe("HIGH");
+    expect(confidenceToStatus(confidence)).toBe("PUBLISHED");
+  });
+});
+
 describe("confidenceToStatus", () => {
   it("maps HIGH → PUBLISHED", () => {
     expect(confidenceToStatus("HIGH")).toBe("PUBLISHED");

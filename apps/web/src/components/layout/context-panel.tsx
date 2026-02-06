@@ -17,22 +17,22 @@ import type {
 // ============================================================================
 
 const TRUST_TIER_BADGE: Record<string, { label: string; cls: string }> = {
-  AUTHORITATIVE: { label: "Autoritativan", cls: "bg-emerald-500/20 text-emerald-400" },
-  STANDARD: { label: "Standardan", cls: "bg-blue-500/20 text-blue-400" },
-  LOW: { label: "Nizak", cls: "bg-gray-500/20 text-gray-400" },
+  AUTHORITATIVE: { label: "Autoritativan", cls: "text-muted-foreground" },
+  STANDARD: { label: "Standardan", cls: "text-muted-foreground" },
+  LOW: { label: "Nizak", cls: "text-muted-foreground" },
 };
 
 const CONFIDENCE_BADGE: Record<string, { label: string; cls: string }> = {
-  HIGH: { label: "Visoka", cls: "text-emerald-400" },
-  MEDIUM: { label: "Srednja", cls: "text-amber-400" },
-  LOW: { label: "Niska", cls: "text-red-400" },
+  HIGH: { label: "Visoka", cls: "text-muted-foreground" },
+  MEDIUM: { label: "Srednja", cls: "text-muted-foreground" },
+  LOW: { label: "Niska", cls: "text-muted-foreground" },
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  RAW: { label: "Neobraden", cls: "bg-gray-500/20 text-gray-400" },
-  ENRICHED: { label: "Obogacen", cls: "bg-blue-500/20 text-blue-400" },
-  PUBLISHED: { label: "Objavljen", cls: "bg-emerald-500/20 text-emerald-400" },
-  QUARANTINED: { label: "U karanteni", cls: "bg-amber-500/20 text-amber-400" },
+  RAW: { label: "Neobraden", cls: "text-muted-foreground" },
+  ENRICHED: { label: "Obogacen", cls: "text-muted-foreground" },
+  PUBLISHED: { label: "Objavljen", cls: "text-muted-foreground" },
+  QUARANTINED: { label: "U karanteni", cls: "text-muted-foreground" },
 };
 
 // ============================================================================
@@ -87,7 +87,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
     <div className="p-4 space-y-5">
       {/* Partial enrichment banner */}
       {!hasAllRequired && (
-        <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+        <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
           Obogacivanje u tijeku... Neki dijelovi jos nisu dostupni.
         </div>
       )}
@@ -116,7 +116,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
           {authCount > 0 && (
             <>
               <span>·</span>
-              <span className="text-emerald-400">{authCount} autoritativan</span>
+              <span className="text-muted-foreground">{authCount} autoritativan</span>
             </>
           )}
           {eventDetail.confidence && CONFIDENCE_BADGE[eventDetail.confidence] && (
@@ -140,11 +140,11 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
           </p>
           {whatHappened.payload.disagreements &&
             whatHappened.payload.disagreements.length > 0 && (
-              <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                <p className="text-xs font-medium text-amber-400 mb-1">
+              <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-200">
+                <p className="text-xs font-medium text-amber-700 mb-1">
                   Izvori se ne slazu:
                 </p>
-                <ul className="text-xs text-amber-300 space-y-0.5">
+                <ul className="text-xs text-amber-600 space-y-0.5">
                   {whatHappened.payload.disagreements.map((d: string, i: number) => (
                     <li key={i}>- {d}</li>
                   ))}
@@ -184,7 +184,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
             {whyMatters.payload.audience.map((a: string) => (
               <span
                 key={a}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border text-muted-foreground"
               >
                 {a}
               </span>
@@ -197,7 +197,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
       <div>
         <SectionHeader>GM Analiza</SectionHeader>
         {gmTake ? (
-          <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+          <div className="p-3 rounded-lg bg-card border border-border">
             <p className="text-sm leading-relaxed italic">{gmTake.payload.takeHr}</p>
             <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
               <span>GM sigurnost: {gmTake.payload.confidence}</span>
@@ -230,7 +230,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
                 href={ev.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-start gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+                className="flex items-start gap-2 p-2 rounded-lg hover:bg-card transition-colors group"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">
@@ -276,7 +276,7 @@ export function ContextPanel({ onClose }: ContextPanelProps) {
             {eventDetail.entities.map((ent: any) => (
               <span
                 key={ent.id}
-                className="text-xs px-2 py-0.5 rounded bg-white/5 text-muted-foreground"
+                className="text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground"
               >
                 {ent.nameHr || ent.name}
                 <span className="ml-1 text-[10px] opacity-60">{ent.type}</span>

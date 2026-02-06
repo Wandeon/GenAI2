@@ -17,7 +17,6 @@ const SOURCE_GROUPS = [
   {
     title: "Vijesti",
     icon: "📰",
-    glowClass: "glass-glow-red",
     sources: [
       { key: "NEWSAPI", label: "NewsAPI", icon: "📰", accentColor: "bg-red-500/20 text-red-400" },
     ],
@@ -25,7 +24,6 @@ const SOURCE_GROUPS = [
   {
     title: "Zajednica",
     icon: "💬",
-    glowClass: "glass-glow-orange",
     sources: [
       { key: "HN", label: "Hacker News", icon: "🔶", accentColor: "bg-orange-500/20 text-orange-400" },
       { key: "REDDIT", label: "Reddit", icon: "🤖", accentColor: "bg-orange-500/20 text-orange-300" },
@@ -35,7 +33,6 @@ const SOURCE_GROUPS = [
   {
     title: "Istraživanje",
     icon: "🔬",
-    glowClass: "glass-glow-green",
     sources: [
       { key: "ARXIV", label: "arXiv", icon: "📄", accentColor: "bg-green-500/20 text-green-400" },
       { key: "HUGGINGFACE", label: "HuggingFace", icon: "🤗", accentColor: "bg-yellow-500/20 text-yellow-400" },
@@ -45,7 +42,6 @@ const SOURCE_GROUPS = [
   {
     title: "Alati",
     icon: "🛠",
-    glowClass: "glass-glow-purple",
     sources: [
       { key: "GITHUB", label: "GitHub", icon: "🐙", accentColor: "bg-purple-500/20 text-purple-400" },
       { key: "DEVTO", label: "Dev.to", icon: "📝", accentColor: "bg-purple-500/20 text-purple-300" },
@@ -55,7 +51,6 @@ const SOURCE_GROUPS = [
   {
     title: "Video",
     icon: "🎬",
-    glowClass: "glass-glow-cyan",
     sources: [
       { key: "YOUTUBE", label: "YouTube", icon: "▶", accentColor: "bg-cyan-500/20 text-cyan-400" },
     ],
@@ -126,7 +121,6 @@ export default function ObservatoryPage() {
           key={group.title}
           title={group.title}
           icon={group.icon}
-          glowClass={group.glowClass}
           sources={[...group.sources]}
           eventsBySource={eventsBySource}
           selectedEventId={selectedEventId ?? undefined}

@@ -12,12 +12,12 @@ interface StatsGridProps {
 }
 
 const stats = [
-  { label: "Ukupno", key: "totalCount" as const, color: "text-blue-400", icon: "📊" },
-  { label: "Vijesti", key: "newsCount" as const, color: "text-red-400", icon: "📰" },
-  { label: "Zajednica", key: "communityCount" as const, color: "text-orange-400", icon: "💬" },
-  { label: "Istraživanje", key: "researchCount" as const, color: "text-green-400", icon: "🔬" },
-  { label: "Alati", key: "toolsCount" as const, color: "text-purple-400", icon: "🛠" },
-  { label: "Video", key: "videoCount" as const, color: "text-cyan-400", icon: "🎬" },
+  { label: "Ukupno", key: "totalCount" as const, color: "text-foreground", icon: "📊" },
+  { label: "Vijesti", key: "newsCount" as const, color: "text-foreground", icon: "📰" },
+  { label: "Zajednica", key: "communityCount" as const, color: "text-foreground", icon: "💬" },
+  { label: "Istraživanje", key: "researchCount" as const, color: "text-foreground", icon: "🔬" },
+  { label: "Alati", key: "toolsCount" as const, color: "text-foreground", icon: "🛠" },
+  { label: "Video", key: "videoCount" as const, color: "text-foreground", icon: "🎬" },
 ];
 
 export function StatsGrid(props: StatsGridProps) {
@@ -29,7 +29,7 @@ export function StatsGrid(props: StatsGridProps) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 + i * 0.08, duration: 0.4 }}
-          className="glass-card rounded-xl p-3 flex flex-col items-center justify-center"
+          className="bg-card border border-border rounded-lg p-3 flex flex-col items-center justify-center"
         >
           <span className="text-xl mb-0.5">{stat.icon}</span>
           <span className={`text-xl font-bold font-mono ${stat.color}`}>

@@ -47,7 +47,7 @@ export function EventsTimeline({ entityId, entityName }: EventsTimelineProps) {
           onChange={(e) =>
             setRoleFilter((e.target.value as MentionRole) || undefined)
           }
-          className="text-sm border rounded px-2 py-1 bg-background"
+          className="text-sm border border-border rounded px-2 py-1 bg-background focus:ring-2 focus:ring-primary focus:outline-none"
         >
           <option value="">Svi</option>
           <option value="SUBJECT">Glavni akter</option>

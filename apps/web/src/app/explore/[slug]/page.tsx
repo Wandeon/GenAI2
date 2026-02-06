@@ -30,7 +30,7 @@ export default function EntityDossierPage({ params }: PageProps) {
   const config = getTypeConfig(entity.type);
 
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="min-h-screen p-4 md:p-8 max-w-[720px] mx-auto">
       {/* Back link */}
       <Link
         href="/explore"
@@ -44,7 +44,7 @@ export default function EntityDossierPage({ params }: PageProps) {
       <header className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <span
-            className={`${config.bgColor} text-white px-2 py-1 rounded text-sm`}
+            className={`${config.badgeClass} px-2 py-1 rounded text-sm`}
           >
             {config.icon} {entity.type}
           </span>
@@ -95,7 +95,7 @@ export default function EntityDossierPage({ params }: PageProps) {
 
 function DossierSkeleton() {
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto animate-pulse">
+    <div className="min-h-screen p-4 md:p-8 max-w-[720px] mx-auto animate-pulse">
       <div className="h-4 w-32 bg-muted rounded mb-6" />
       <div className="h-6 w-24 bg-muted rounded mb-2" />
       <div className="h-10 w-64 bg-muted rounded mb-2" />

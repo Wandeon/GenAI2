@@ -1,51 +1,49 @@
 @import "tailwindcss";
 
-/* GenAI2 Observatory Theme */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-}
+/* ============================================================================
+   GenAI Observatory — Light Warm-Mono Theme
+   Design: "Readable like a morning brief, sharp like a dev tool."
+   ============================================================================ */
 
-.dark {
-  --background: 222 47% 6%;
-  --foreground: 210 40% 98%;
-  --card: 222 47% 8%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222 47% 8%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 14%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 14%;
-  --muted-foreground: 215 20.2% 55%;
-  --accent: 217.2 32.6% 14%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 50%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 14%;
-  --input: 217.2 32.6% 14%;
-  --ring: 224.3 76.3% 48%;
+:root {
+  /* Background & Surface */
+  --background: 0 0% 100%;          /* #FFFFFF */
+  --foreground: 20 14% 10%;         /* #1C1917 (stone-900) */
+  --card: 40 20% 98%;               /* #FAFAF9 (stone-50) */
+  --card-foreground: 20 14% 10%;    /* #1C1917 */
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14% 10%;
+
+  /* Primary = amber accent */
+  --primary: 38 92% 50%;            /* #F59E0B (amber-500) */
+  --primary-foreground: 0 0% 100%;  /* white on amber */
+
+  /* Secondary = warm gray surface */
+  --secondary: 40 20% 98%;          /* #FAFAF9 */
+  --secondary-foreground: 20 14% 10%;
+
+  /* Muted = warm gray */
+  --muted: 40 20% 98%;              /* #FAFAF9 */
+  --muted-foreground: 25 6% 45%;    /* #78716C (stone-500) */
+
+  /* Accent = amber */
+  --accent: 38 92% 50%;
+  --accent-foreground: 0 0% 100%;
+
+  /* Alert */
+  --destructive: 0 84% 60%;         /* #EF4444 */
+  --destructive-foreground: 0 0% 100%;
+
+  /* Border = warm gray */
+  --border: 30 7% 89%;              /* #E7E5E3 (stone-200) */
+  --input: 30 7% 89%;
+  --ring: 38 92% 50%;               /* amber focus ring */
+
+  --radius: 0.5rem;
+
+  /* Geist font families (set by next/font CSS variables) */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 }
 
 * {
@@ -56,82 +54,11 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  background-image:
-    radial-gradient(ellipse at top, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
 }
 
-/* Glassmorphism utilities */
+/* Utility: Geist Mono for metadata */
 @layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .glass-card {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  }
-
-  .glass-header {
-    background: rgba(255, 255, 255, 0.02);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-
-  .glass-glow {
-    box-shadow:
-      0 0 20px rgba(59, 130, 246, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-green {
-    box-shadow:
-      0 0 20px rgba(34, 197, 94, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-orange {
-    box-shadow:
-      0 0 20px rgba(249, 115, 22, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-purple {
-    box-shadow:
-      0 0 20px rgba(168, 85, 247, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-red {
-    box-shadow:
-      0 0 20px rgba(239, 68, 68, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-cyan {
-    box-shadow:
-      0 0 20px rgba(6, 182, 212, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-yellow {
-    box-shadow:
-      0 0 20px rgba(234, 179, 8, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-glow-pink {
-    box-shadow:
-      0 0 20px rgba(236, 72, 153, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.2);
+  .font-mono {
+    font-family: var(--font-mono);
   }
 }

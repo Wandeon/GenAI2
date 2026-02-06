@@ -17,16 +17,16 @@ interface CockpitEventCardProps {
 }
 
 const impactDot: Record<string, string> = {
-  BREAKING: "bg-red-500 shadow-red-500/50 shadow-lg",
-  HIGH: "bg-orange-500 shadow-orange-500/50 shadow-lg",
-  MEDIUM: "bg-blue-500",
-  LOW: "bg-gray-500",
+  BREAKING: "bg-red-500",
+  HIGH: "bg-amber-500",
+  MEDIUM: "bg-transparent",
+  LOW: "bg-transparent",
 };
 
 const confidenceBadge: Record<string, { dot: string; label: string; text: string }> = {
-  HIGH: { dot: "bg-emerald-500", label: "HIGH", text: "text-emerald-400" },
-  MEDIUM: { dot: "bg-amber-500", label: "MEDIUM", text: "text-amber-400" },
-  LOW: { dot: "bg-red-500", label: "LOW", text: "text-red-400" },
+  HIGH: { dot: "bg-emerald-500", label: "HIGH", text: "text-muted-foreground font-mono" },
+  MEDIUM: { dot: "bg-amber-500", label: "MEDIUM", text: "text-muted-foreground font-mono" },
+  LOW: { dot: "bg-red-500", label: "LOW", text: "text-muted-foreground font-mono" },
 };
 
 export function CockpitEventCard({
@@ -57,7 +57,7 @@ export function CockpitEventCard({
       className={`w-full text-left p-3 rounded-xl transition-all duration-200 border ${
         isSelected
           ? "border-primary/50 bg-primary/5"
-          : "border-transparent hover:border-white/5"
+          : "border-transparent hover:bg-card"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -91,7 +91,7 @@ export function CockpitEventCard({
               {topics.slice(0, 2).map((t) => (
                 <span
                   key={t}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground"
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border text-muted-foreground"
                 >
                   {t}
                 </span>

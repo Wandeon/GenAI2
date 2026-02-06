@@ -21,7 +21,7 @@ export function BriefingCard() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.2, duration: 0.5 }}
-      className="glass-card glass-glow rounded-2xl p-5 h-full"
+      className="bg-card border border-border rounded-xl p-5 h-full"
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">📡</span>
@@ -39,7 +39,7 @@ export function BriefingCard() {
             <ul className="space-y-1">
               {payload.changedSince.highlights.slice(0, 3).map((h: string, i: number) => (
                 <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                  <span className="text-blue-400 mt-0.5">▸</span>
+                  <span className="text-primary mt-0.5">▸</span>
                   <span>{h}</span>
                 </li>
               ))}

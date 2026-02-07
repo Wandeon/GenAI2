@@ -16,6 +16,7 @@ vi.mock("@genai/db", async (importOriginal) => {
       relationship: {
         findMany: vi.fn(),
       },
+      $queryRaw: vi.fn(),
     },
   };
 });
@@ -264,6 +265,159 @@ describe("entities router", () => {
         take: 5,
         select: { id: true, name: true, slug: true, type: true },
       });
+    });
+  });
+
+  // ============================================================================
+  // GRAPH DATA TESTS
+  // ============================================================================
+
+  describe("graphData", () => {
+    it("returns nodes and links for entity relationships", async () => {
+      vi.mocked(prisma.relationship.findMany).mockResolvedValue(mockRelationships as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.graphData({ entityId: "ent_1", maxNodes: 30 });
+
+      expect(result.nodes).toHaveLength(3);
+      expect(result.links).toHaveLength(2);
+      expect(result.nodes).toEqual(
+        expect.arrayContaining([
+          { id: "ent_1", name: "OpenAI", type: "COMPANY", slug: "openai" },
+          { id: "ent_2", name: "GPT-4", type: "MODEL", slug: "gpt-4" },
+          { id: "ent_3", name: "Microsoft", type: "COMPANY", slug: "microsoft" },
+        ])
+      );
+      expect(result.links).toEqual(
+        expect.arrayContaining([
+          { source: "ent_1", target: "ent_2", type: "RELEASED" },
+          { source: "ent_3", target: "ent_1", type: "FUNDED" },
+        ])
+      );
+    });
+
+    it("filters by relationshipTypes in the query", async () => {
+      const releasedOnly = [mockRelationships[0]];
+      vi.mocked(prisma.relationship.findMany).mockResolvedValue(releasedOnly as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.graphData({
+        entityId: "ent_1",
+        maxNodes: 30,
+        relationshipTypes: ["RELEASED"],
+      });
+
+      expect(prisma.relationship.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [{ sourceId: "ent_1" }, { targetId: "ent_1" }],
+          status: "APPROVED",
+          type: { in: ["RELEASED"] },
+        },
+        include: { source: true, target: true },
+        take: 30,
+      });
+      expect(result.nodes).toHaveLength(2);
+      expect(result.links).toHaveLength(1);
+    });
+
+    it("filters by entityTypes, keeping the queried entity", async () => {
+      vi.mocked(prisma.relationship.findMany).mockResolvedValue(mockRelationships as never);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.graphData({
+        entityId: "ent_1",
+        maxNodes: 30,
+        entityTypes: ["MODEL"],
+      });
+
+      // ent_1 (COMPANY) is kept because it's the queried entity
+      // ent_2 (MODEL) passes the filter
+      // ent_3 (COMPANY) is removed by the filter
+      expect(result.nodes).toHaveLength(2);
+      expect(result.nodes.map((n) => n.id)).toContain("ent_1");
+      expect(result.nodes.map((n) => n.id)).toContain("ent_2");
+      expect(result.nodes.map((n) => n.id)).not.toContain("ent_3");
+      // Link ent_3 -> ent_1 is removed because ent_3 was filtered out
+      expect(result.links).toHaveLength(1);
+      expect(result.links[0]).toEqual({
+        source: "ent_1",
+        target: "ent_2",
+        type: "RELEASED",
+      });
+    });
+
+    it("returns empty graph for entity with no relationships", async () => {
+      vi.mocked(prisma.relationship.findMany).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.graphData({ entityId: "ent_999", maxNodes: 30 });
+
+      expect(result.nodes).toEqual([]);
+      expect(result.links).toEqual([]);
+    });
+  });
+
+  // ============================================================================
+  // MENTION VELOCITY TESTS
+  // ============================================================================
+
+  describe("mentionVelocity", () => {
+    it("returns date/count pairs for entity mentions", async () => {
+      const mockRows = [
+        { date: "2026-02-01", count: 5 },
+        { date: "2026-02-02", count: 3 },
+        { date: "2026-02-03", count: 8 },
+      ];
+      vi.mocked(prisma.$queryRaw).mockResolvedValue(mockRows);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.mentionVelocity({ entityId: "ent_1", days: 7 });
+
+      expect(result.data).toEqual(mockRows);
+      expect(result.data).toHaveLength(3);
+      expect(result.data[0]!.date).toBe("2026-02-01");
+      expect(result.data[0]!.count).toBe(5);
+      expect(result.data[2]!.date).toBe("2026-02-03");
+      expect(result.data[2]!.count).toBe(8);
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns empty data for entity with no mentions", async () => {
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      const result = await caller.mentionVelocity({ entityId: "ent_999", days: 7 });
+
+      expect(result.data).toEqual([]);
+      expect(result.data).toHaveLength(0);
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it("passes entityId and computed since date to the query", async () => {
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+
+      const ctx = createTRPCContext();
+      const caller = createCaller(ctx);
+      await caller.mentionVelocity({ entityId: "ent_1", days: 30 });
+
+      // $queryRaw is called as tagged template: $queryRaw`...${entityId}...${since}...`
+      // Mock receives (TemplateStringsArray, entityId, sinceDate)
+      const callArgs = vi.mocked(prisma.$queryRaw).mock.calls[0]!;
+      expect(callArgs[1]).toBe("ent_1");
+
+      const sinceDate = callArgs[2] as Date;
+      expect(sinceDate).toBeInstanceOf(Date);
+
+      // With days=30, sinceDate should be ~30 days ago
+      const expectedSince = new Date();
+      expectedSince.setDate(expectedSince.getDate() - 30);
+      expect(Math.abs(sinceDate.getTime() - expectedSince.getTime())).toBeLessThan(60_000);
     });
   });
 });

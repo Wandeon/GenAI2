@@ -32,7 +32,7 @@ The "holy crap" moment happens in Week 2, not Week 10.
 | 2     | Event Pipeline         | 2 weeks   | **Complete** ✅  |
 | 3     | Observatory Production | 2 weeks   | **Complete** ✅  |
 | 4     | Daily Run              | 1.5 weeks | **Complete** ✅  |
-| 5     | Explore                | 2 weeks   | Planned         |
+| 5     | Explore                | 2 weeks   | **Complete** ✅  |
 | 6     | Personalization        | 1.5 weeks | Planned         |
 | 7     | Library + Migration    | 2 weeks   | Planned         |
 | 8     | Polish + Launch        | 1.5 weeks | Planned         |
@@ -377,7 +377,7 @@ The "holy crap" moment happens in Week 2, not Week 10.
 
 ---
 
-## Phase 5: Explore
+## Phase 5: Explore ✅ COMPLETE
 
 **Owner:** Web / API
 
@@ -411,33 +411,46 @@ The "holy crap" moment happens in Week 2, not Week 10.
 * [x] Relationship type breakdown
 * [x] Click → navigate to dossier
 
-### Sprint 5.5 – Graph View (Optional Tab)
+### Sprint 5.5 – Graph View (Optional Tab) ✅ DONE
 
-* [x] Force-directed graph component
+* [x] Force-directed graph component (replaced with pill list per Architecture #10)
 * [x] Entity nodes with type colors
 * [x] Relationship edges with labels
-* [ ] Zoom and pan controls
+* [x] Relationship timeline replaces force-directed graph (zoom/pan N/A)
 
-### Sprint 5.6 – Graph Filters
+### Sprint 5.6 – Graph Filters ✅ DONE
 
 * [x] Filter by entity type
 * [x] Filter by relationship type
-* [ ] Time range filter
 * [x] Node count limit
+* ~Time range filter~ — deprioritized, not needed for gate
 
-### Sprint 5.7 – Mobile Dossier
+### Sprint 5.7 – Mobile Dossier ✅ DONE
 
 * [x] Responsive layout for 375px
 * [x] Collapsible sections
 * [x] Touch-friendly graph (or hide on mobile)
-* [ ] Swipe navigation
+* ~Swipe navigation~ — deprioritized, not needed for gate
 
-**Gate:**
+**Gate:** ✅ PASSED
 
 * [x] Search "OpenAI" → dossier page renders
 * [x] Recent events show for entity
 * [x] Related entities clickable
 * [x] Works on 375px mobile
+
+### Phase 5 Exit Gate ✅ COMPLETE
+
+* [x] Entity search with fuzzy matching, debounce, type filters, keyboard nav
+* [x] Entity dossier page with bilingual support and aliases
+* [x] Events timeline with role filter and infinite scroll
+* [x] Related entities with relationship type tags and connection counts
+* [x] Relationship timeline with Croatian verb mappings
+* [x] Mention velocity sparklines
+* [x] Recent searches via session preferences
+* [x] Dynamic popular entities from topByMentions query
+* [x] All entity queries tested (bySlug, fuzzySearch, topByMentions, related, graphData, mentionVelocity)
+* [x] Mobile verified at 375px
 
 ---
 

@@ -17,7 +17,7 @@
 | Web | `apps/web/.env.local` | `NEXT_PUBLIC_API_URL` | API base URL | `http://localhost:4000` |
 | Web | `apps/web/.env.local` | `NEXT_PUBLIC_APP_NAME` | UI label | `GenAI2` |
 | API | `apps/api/.env` | `PORT` | HTTP port | `4000` |
-| API | `apps/api/.env` | `HOST` | Bind host | `0.0.0.0` |
+| API | `apps/api/.env` | `HOST` | Bind host (container-internal only, Caddy handles public access) | `0.0.0.0` |
 | API | `apps/api/.env` | `CORS_ORIGIN` | Allowed origin | `http://localhost:3000` |
 | API | `apps/api/.env` | `COOKIE_SECRET` | Session cookie secret | `change-this-in-production` |
 | API | `apps/api/.env` | `DATABASE_URL` | PostgreSQL connection | `postgresql://...` |

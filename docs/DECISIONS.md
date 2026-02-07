@@ -126,3 +126,71 @@ This document records key technical choices for the scaffold.
 - **Why**: One briefing per day with ordered top events. Enables ritual daily consumption.
 - **Payload**: Typed JSON validated by `DailyBriefingPayload` Zod schema containing changedSince, prediction, action, gmNote.
 - **Backward Compatibility**: New tables, no existing data affected.
+
+---
+
+## Phase 5 Explore Decisions (2026-02-06)
+
+### 22) Dossier-First Entity Exploration (Architecture Principle #10)
+- **Decision**: Entity exploration is text-first via dossier pages at `/explore/[slug]`. Force-directed graph is optional and deprioritized.
+- **Why**: Text dossiers load instantly, work on all devices, and provide actionable information. Force-graphs are expensive, hard to interpret on mobile, and add complexity without proportional value.
+- **Implementation**: `RelationshipTimeline` (Croatian verb-mapped list) replaced the force-directed graph. `EntityGraph` component exists as a collapsible pill list but is not rendered in the dossier page.
+
+### 23) Slug-Based Entity Routing
+- **Decision**: Entity dossier pages use slug-based URLs (`/explore/[slug]`) rather than UUID-based.
+- **Why**: Human-readable URLs improve shareability and SEO. Slugs are unique and stable (generated from entity name on creation).
+- **Implementation**: `entities.bySlug` tRPC query with Prisma `findUnique({ where: { slug } })`.
+
+### 24) Fuzzy Entity Search with Alias Matching
+- **Decision**: Entity search matches against `name`, `nameHr`, and `EntityAlias.alias` fields using case-insensitive `contains`.
+- **Why**: Users search with typos ("anthorpic" → "Anthropic") and alternative names ("Open AI" → "OpenAI"). Aliases capture known variants.
+- **Implementation**: `entities.fuzzySearch` tRPC query with OR clause across 3 fields + optional entity type filter. Results ordered by `importance` desc.
+
+### 25) Mention Velocity Sparklines
+- **Decision**: Entity dossier pages show a 7-day mention velocity sparkline next to the mention count.
+- **Why**: Static counts don't show momentum. A sparkline reveals whether an entity is trending up/down at a glance.
+- **Implementation**: `entities.mentionVelocity` tRPC query using raw SQL (`$queryRaw`) for date-grouped counts. `MentionSparkline` SVG component with trend-colored stroke (green up, red down, gray flat).
+
+### 26) Relationship Timeline with Croatian Verb Mapping
+- **Decision**: Relationships are displayed as a vertical timeline with Croatian verb labels (e.g., "NADMASUJE", "OBJAVIO", "PREUZEO") rather than raw enum values.
+- **Why**: Croatian-first UI. Raw relationship types (BEATS, RELEASED, ACQUIRED) are machine-readable but not user-friendly. Directional verbs (subject vs object) add semantic clarity.
+- **Implementation**: `RelationshipTimeline` component with `VERB_MAP` record mapping each `RelationType` to `{ subject, object }` Croatian verbs.
+
+### 27) Recent Searches via Session Preferences
+- **Decision**: Recent entity searches are stored in the session's `preferences` JSON field, not a separate table.
+- **Why**: Lightweight implementation. Session preferences already exist (Architecture Decision #13). Max 8 entries, deduped by slug, newest first.
+- **Implementation**: `sessions.addRecentSearch` mutation (push to `preferences.recentSearches`) and `sessions.getRecentSearches` query.
+
+### 28) Entity Type Visual Configuration
+- **Decision**: Shared `type-config.ts` maps each `EntityType` to an icon, color, and badge class.
+- **Why**: Entity types (COMPANY, LAB, MODEL, etc.) appear in search results, dossier headers, related entities, and graph pills. Centralizing the visual config prevents duplication and ensures consistency.
+- **Implementation**: `apps/web/src/components/entity/type-config.ts` exports `ENTITY_TYPE_CONFIG`, `ENTITY_TYPES`, and `getTypeConfig()`.
+
+---
+
+## UI Redesign Decisions (2026-02-05)
+
+### 29) Light Warm-Mono Palette (Replacing Dark Glassmorphism)
+- **Decision**: Replace the dark glassmorphism theme with a light, minimal palette using white backgrounds, warm grays (stone), and amber accents.
+- **Why**: Designer feedback indicated the dark theme felt heavy and distracting. Light palette improves readability, reduces visual noise, and aligns with professional tool aesthetics (Bloomberg, Notion).
+- **Design Tokens**: Geist Sans + Geist Mono typography. No gradients, no glows, no glassmorphism.
+
+### 30) Mobile/Desktop Navigation Split
+- **Decision**: Bottom tab bar on mobile (< 768px), icon rail on desktop (>= 768px). Navigation labels: "Dnevni" (Daily), "Uzivo" (Live Intel), "Dossier" (Explore).
+- **Why**: Mobile users need thumb-reachable navigation; desktop users need persistent sidebar that doesn't waste horizontal space.
+- **Implementation**: `BottomTabBar` (56px fixed bottom, 3 tabs) and `IconRail` (56px collapsed / 200px expanded). CSS breakpoint swap via `hidden md:block` / `md:hidden`.
+
+### 31) Mobile/Desktop Component Split for Daily Page
+- **Decision**: Daily page renders separate `DailyMobile` and `DailyDesktop` components via CSS breakpoint swap, not a single responsive component.
+- **Why**: Mobile needs dense, scroll-optimized layout (CompactEventRow, sticky header). Desktop needs spacious cockpit (RankedCards, CouncilHero). Too different to unify in one component without prop soup.
+- **Implementation**: `apps/web/src/app/daily/page.tsx` renders both with `hidden md:block` / `md:hidden`. Shared types in `daily/types.ts`.
+
+### 32) Relaxed Publish Gate for Single AUTHORITATIVE Sources
+- **Decision**: Changed `REQUIRED_ARTIFACTS` from `["HEADLINE", "SUMMARY"]` to `["HEADLINE"]` only.
+- **Why**: Events from AUTHORITATIVE sources with a single headline should publish immediately. Requiring SUMMARY delayed publication and left mobile feeds empty during low-activity periods.
+- **Impact**: More events reach PUBLISHED status faster. Mobile never shows blank state.
+
+### 33) todayOrLatest Briefing Fallback
+- **Decision**: `dailyBriefings.todayOrLatest` tRPC query tries today's briefing first, falls back to most recent.
+- **Why**: If today's briefing hasn't been generated yet, mobile would show a blank screen. Falling back to latest ensures content is always available. UI shows a stale banner when displaying a non-today briefing.
+- **Implementation**: Returns `{ briefing, isLatest: boolean }` for UI to render stale indicator.
